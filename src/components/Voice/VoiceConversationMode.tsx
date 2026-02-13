@@ -1,26 +1,26 @@
-﻿import { useState, useRef, useEffect } from 'react';
-import { X, Mic, MicOff } from 'lucide-react';
-import VoiceWaveform from './VoiceWaveform';
-import VoiceFeedback, { FeedbackStatus } from './VoiceFeedback';
+import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Mic, MicOff, Volume2, VolumeX, X, Radio, Pause } from 'lucide-react';
 
 interface VoiceConversationModeProps {
   onClose: () => void;
-  onMessage: (text: string) => Promise<string>;
-  isDarkMode: boolean;
+  onMessage: (text: string) => void;
 }
 
-const VoiceConversationMode = ({ onClose, onMessage, isDarkMode }: VoiceConversationModeProps) => {
+const VoiceConversationMode = ({ onClose, onMessage }: VoiceConversationModeProps) => {
+  const { t } = useTranslation();
   const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [response, setResponse] = useState('');
-  const [status, setStatus] = useState<FeedbackStatus>('idle');
-  const [statusMessage, setStatusMessage] = useState('');
-  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
+  const [volume, setVolume] = useState(0);
+  const [status, setStatus] = useState<'inactive' | 'listening' | 'processing' | 'speaking'>('inactive');
   
   const recognitionRef = useRef<any>(null);
-  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const animationRef = useRef<number>();
+  const audioContextRef = useRef<AudioContext>();
+  const analyserRef = useRef<AnalyserNode>();
 
-  // Initialize speech recognition
+  // Initialize Speech Recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
@@ -30,30 +30,25 @@ const VoiceConversationMode = ({ onClose, onMessage, isDarkMode }: VoiceConversa
       recognitionRef.current.lang = 'he-IL';
 
       recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
-        let finalTranscript = '';
+        const last = event.results.length - 1;
+        const text = event.results[last][0].transcript;
+        setTranscript(text);
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        setTranscript(finalTranscript || interimTranscript);
-
-        if (finalTranscript) {
-          handleVoiceInput(finalTranscript.trim());
+        if (event.results[last].isFinal) {
+          setStatus('processing');
+          onMessage(text);
+          setTimeout(() => {
+            setTranscript('');
+            setStatus('listening');
+          }, 1000);
         }
       };
 
       recognitionRef.current.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
-        setStatus('error');
-        setStatusMessage('שגיאה בזיהוי דיבור: ' + event.error);
-        setIsListening(false);
+        if (event.error === 'no-speech') {
+          setStatus('listening');
+        }
       };
 
       recognitionRef.current.onend = () => {
@@ -61,215 +56,181 @@ const VoiceConversationMode = ({ onClose, onMessage, isDarkMode }: VoiceConversa
           recognitionRef.current?.start();
         }
       };
+    } else {
+      window.notify?.error(t('errors.voiceNotSupported'));
     }
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
+      recognitionRef.current?.stop();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
     };
-  }, [isListening, audioStream]);
+  }, [isListening, onMessage, t]);
 
-  const startListening = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
-      
+  // Audio Visualization
+  useEffect(() => {
+    if (isListening) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          audioContextRef.current = new AudioContext();
+          analyserRef.current = audioContextRef.current.createAnalyser();
+          const source = audioContextRef.current.createMediaStreamSource(stream);
+          source.connect(analyserRef.current);
+          analyserRef.current.fftSize = 256;
+
+          const updateVolume = () => {
+            if (!analyserRef.current) return;
+            
+            const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+            analyserRef.current.getByteFrequencyData(dataArray);
+            
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            setVolume(average);
+            
+            animationRef.current = requestAnimationFrame(updateVolume);
+          };
+
+          updateVolume();
+        })
+        .catch(err => {
+          console.error('Microphone access error:', err);
+          window.notify?.error(t('errors.voicePermission'));
+        });
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isListening, t]);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      setStatus('inactive');
+    } else {
+      recognitionRef.current?.start();
       setIsListening(true);
       setStatus('listening');
-      setStatusMessage('מאזין...');
-      setTranscript('');
-      setResponse('');
-      
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-      }
-    } catch (error) {
-      console.error('Microphone access denied:', error);
-      setStatus('error');
-      setStatusMessage('לא ניתן לגשת למיקרופון');
     }
   };
 
-  const stopListening = () => {
-    setIsListening(false);
-    setStatus('idle');
-    setStatusMessage('');
-    
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    
-    if (audioStream) {
-      audioStream.getTracks().forEach(track => track.stop());
-      setAudioStream(null);
+  const getStatusColor = () => {
+    switch (status) {
+      case 'listening': return 'from-emerald-500 to-green-500';
+      case 'processing': return 'from-blue-500 to-cyan-500';
+      case 'speaking': return 'from-purple-500 to-pink-500';
+      default: return 'from-gray-500 to-gray-600';
     }
   };
 
-  const handleVoiceInput = async (text: string) => {
-    if (!text.trim()) return;
-
-    setIsListening(false);
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+  const getStatusText = () => {
+    switch (status) {
+      case 'listening': return t('voice.listening');
+      case 'processing': return t('voice.processing');
+      case 'speaking': return t('voice.speaking');
+      default: return t('voice.inactive');
     }
-
-    setStatus('processing');
-    setStatusMessage('מעבד את השאלה...');
-
-    try {
-      const aiResponse = await onMessage(text);
-      setResponse(aiResponse);
-      
-      setStatus('speaking');
-      setStatusMessage('מדבר...');
-      
-      await speakResponse(aiResponse);
-      
-      setStatus('success');
-      setStatusMessage('הושלם!');
-      
-      setTimeout(() => {
-        if (!isListening) {
-          startListening();
-        }
-      }, 2000);
-    } catch (error) {
-      console.error('Error processing voice input:', error);
-      setStatus('error');
-      setStatusMessage('שגיאה בעיבוד השאלה');
-      
-      setTimeout(() => {
-        if (!isListening) {
-          startListening();
-        }
-      }, 3000);
-    }
-  };
-
-  const speakResponse = (text: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'he-IL';
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-
-        utterance.onend = () => {
-          synthRef.current = null;
-          resolve();
-        };
-
-        utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event);
-          synthRef.current = null;
-          reject(event);
-        };
-
-        synthRef.current = utterance;
-        window.speechSynthesis.speak(utterance);
-      } else {
-        console.warn('Speech synthesis not supported');
-        resolve();
-      }
-    });
-  };
-
-  const handleClose = () => {
-    stopListening();
-    if (synthRef.current) {
-      window.speechSynthesis.cancel();
-    }
-    onClose();
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      dir="rtl"
-    >
-      <div className="w-full max-w-2xl glass-panel rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl" dir="rtl">
+      <div className="w-full max-w-2xl glass-panel rounded-3xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20">
-              <Mic className="w-6 h-6 text-emerald-400" />
+        <div className="relative p-6 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={\p-3 rounded-xl bg-gradient-to-br \\}>
+                {status === 'listening' ? (
+                  <Radio className="w-6 h-6 text-white animate-pulse" />
+                ) : status === 'speaking' ? (
+                  <Volume2 className="w-6 h-6 text-white" />
+                ) : (
+                  <Mic className="w-6 h-6 text-white" />
+                )}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">{t('voice.voiceMode')}</h2>
+                <p className="text-sm text-gray-400">{getStatusText()}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">מצב שיחה קולי</h2>
-              <p className="text-sm text-gray-400">דבר בחופשיות, אני מקשיב</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
+        </div>
+
+        {/* Visualization */}
+        <div className="relative p-12 flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
+          {/* Wave Visualization */}
+          <div className="flex items-center justify-center gap-1">
+            {Array.from({ length: 32 }).map((_, i) => {
+              const height = isListening ? Math.max(20, (volume / 2) * Math.sin(i * 0.5) + volume) : 20;
+              return (
+                <div
+                  key={i}
+                  className={\w-1 rounded-full bg-gradient-to-t \ transition-all duration-150\}
+                  style={{
+                    height: \\px\,
+                    opacity: isListening ? 0.8 : 0.3,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Pulsing Circle */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className={\w-64 h-64 rounded-full bg-gradient-to-br \ opacity-20 blur-3xl \\} />
+          </div>
+        </div>
+
+        {/* Transcript */}
+        <div className="p-6 min-h-[120px] bg-slate-900/50">
+          {transcript ? (
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-white text-lg text-center">{transcript}</p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-center">
+                {isListening ? '🎤 מאזין...' : 'לחץ על המיקרופון להתחלה'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Controls */}
+        <div className="p-6 border-t border-white/10 flex items-center justify-center gap-4">
           <button
-            onClick={handleClose}
-            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-            aria-label="סגור"
+            onClick={toggleListening}
+            className={\elative p-8 rounded-full bg-gradient-to-br \ shadow-2xl hover:scale-110 transition-transform\}
           >
-            <X className="w-6 h-6" />
+            {isListening ? (
+              <Pause className="w-10 h-10 text-white" />
+            ) : (
+              <Mic className="w-10 h-10 text-white" />
+            )}
+            
+            {/* Pulse Animation */}
+            {isListening && (
+              <div className="absolute inset-0 rounded-full animate-ping opacity-75 bg-emerald-500" />
+            )}
           </button>
         </div>
 
-        {/* Main Content */}
-        <div className="p-6 space-y-6">
-          {/* Voice Waveform */}
-          <VoiceWaveform
-            isRecording={isListening}
-            audioStream={audioStream}
-            className="mb-4"
-          />
-
-          {/* Status Feedback */}
-          <VoiceFeedback
-            status={status}
-            message={statusMessage}
-          />
-
-          {/* Transcript Display */}
-          {transcript && (
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-              <p className="text-sm text-gray-400 mb-1">אתה אמרת:</p>
-              <p className="text-white">{transcript}</p>
-            </div>
-          )}
-
-          {/* Response Display */}
-          {response && (
-            <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-blue-500/10 border border-emerald-500/20">
-              <p className="text-sm text-emerald-400 mb-1">תשובה:</p>
-              <p className="text-white whitespace-pre-wrap">{response}</p>
-            </div>
-          )}
-
-          {/* Control Button */}
-          <div className="flex justify-center pt-4">
-            {!isListening ? (
-              <button
-                onClick={startListening}
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium hover:shadow-lg hover:shadow-emerald-500/50 transition-all flex items-center gap-2"
-              >
-                <Mic className="w-5 h-5" />
-                התחל שיחה
-              </button>
-            ) : (
-              <button
-                onClick={stopListening}
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-medium hover:shadow-lg hover:shadow-red-500/50 transition-all flex items-center gap-2 animate-pulse"
-              >
-                <MicOff className="w-5 h-5" />
-                עצור הקלטה
-              </button>
-            )}
-          </div>
-
-          {/* Instructions */}
-          <div className="text-center text-sm text-gray-400">
-            <p>💡 טיפ: המערכת תמשיך להאזין אוטומטית אחרי כל תשובה</p>
+        {/* Tips */}
+        <div className="px-6 pb-6">
+          <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <p className="text-sm text-blue-300 text-center">
+              💡 טיפ: דבר בבירור ובקצב רגיל לתוצאות מיטביות
+            </p>
           </div>
         </div>
       </div>

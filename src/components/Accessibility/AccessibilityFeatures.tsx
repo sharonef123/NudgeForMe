@@ -1,297 +1,252 @@
-﻿import { useState, useEffect } from 'react';
-import { Eye, Type, Contrast, Keyboard, MonitorSpeaker } from 'lucide-react';
-
-interface AccessibilitySettings {
-  fontSize: 'small' | 'medium' | 'large' | 'xlarge';
-  highContrast: boolean;
-  reduceMotion: boolean;
-  keyboardNav: boolean;
-  screenReader: boolean;
-}
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Eye, Keyboard, MousePointer, Speaker, X, ZoomIn } from 'lucide-react';
 
 interface AccessibilityFeaturesProps {
-  onSettingsChange: (settings: AccessibilitySettings) => void;
+  onSettingsChange: (settings: any) => void;
   onClose: () => void;
 }
 
 const AccessibilityFeatures = ({ onSettingsChange, onClose }: AccessibilityFeaturesProps) => {
-  const [settings, setSettings] = useState<AccessibilitySettings>({
-    fontSize: 'medium',
-    highContrast: false,
-    reduceMotion: false,
-    keyboardNav: true,
-    screenReader: false,
-  });
+  const { t } = useTranslation();
+  const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large' | 'xlarge'>('medium');
+  const [highContrast, setHighContrast] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [keyboardNav, setKeyboardNav] = useState(true);
+  const [screenReader, setScreenReader] = useState(false);
 
   useEffect(() => {
-    // Load saved settings
-    const saved = localStorage.getItem('nudge-accessibility-settings');
-    if (saved) {
-      try {
-        setSettings(JSON.parse(saved));
-      } catch (error) {
-        console.error('Failed to load accessibility settings:', error);
-      }
-    }
-
-    // Check user's system preferences
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      handleSettingChange('reduceMotion', true);
-    }
-
-    if (window.matchMedia('(prefers-contrast: high)').matches) {
-      handleSettingChange('highContrast', true);
-    }
-  }, []);
-
-  const handleSettingChange = (key: keyof AccessibilitySettings, value: any) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    
-    // Save to localStorage
-    localStorage.setItem('nudge-accessibility-settings', JSON.stringify(newSettings));
-    
     // Apply settings to document
-    applySettings(newSettings);
-    
-    // Notify parent
-    onSettingsChange(newSettings);
-  };
-
-  const applySettings = (s: AccessibilitySettings) => {
-    const root = document.documentElement;
-
-    // Font size
-    const fontSizes = {
+    document.documentElement.style.fontSize = {
       small: '14px',
       medium: '16px',
       large: '18px',
-      xlarge: '20px',
-    };
-    root.style.setProperty('--base-font-size', fontSizes[s.fontSize]);
+      xlarge: '22px',
+    }[fontSize];
 
-    // High contrast
-    if (s.highContrast) {
-      root.classList.add('high-contrast');
+    if (highContrast) {
+      document.documentElement.classList.add('high-contrast');
     } else {
-      root.classList.remove('high-contrast');
+      document.documentElement.classList.remove('high-contrast');
     }
 
-    // Reduce motion
-    if (s.reduceMotion) {
-      root.classList.add('reduce-motion');
+    if (reduceMotion) {
+      document.documentElement.classList.add('reduce-motion');
     } else {
-      root.classList.remove('reduce-motion');
+      document.documentElement.classList.remove('reduce-motion');
     }
 
-    // Keyboard navigation
-    if (s.keyboardNav) {
-      root.classList.add('keyboard-nav');
+    if (keyboardNav) {
+      document.documentElement.classList.add('keyboard-nav');
     } else {
-      root.classList.remove('keyboard-nav');
+      document.documentElement.classList.remove('keyboard-nav');
     }
+  }, [fontSize, highContrast, reduceMotion, keyboardNav]);
 
-    // Screen reader
-    if (s.screenReader) {
-      root.setAttribute('aria-live', 'polite');
-    } else {
-      root.removeAttribute('aria-live');
-    }
+  const saveSettings = () => {
+    const settings = { fontSize, highContrast, reduceMotion, keyboardNav, screenReader };
+    localStorage.setItem('accessibility-settings', JSON.stringify(settings));
+    onSettingsChange(settings);
+    window.notify?.success('הגדרות נשמרו', 'העדפות הנגישות שלך עודכנו');
+    onClose();
   };
 
-  const shortcuts = [
-    { keys: 'Ctrl + /', description: 'פתח תפריט נגישות' },
-    { keys: 'Ctrl + K', description: 'התמקד בחיפוש' },
-    { keys: 'Ctrl + M', description: 'פתח מצב קולי' },
-    { keys: 'Escape', description: 'סגור חלון פעיל' },
-    { keys: 'Tab', description: 'נווט בין אלמנטים' },
-    { keys: 'Enter', description: 'הפעל אלמנט נבחר' },
-  ];
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" dir="rtl">
-      <div className="w-full max-w-2xl glass-panel rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl" dir="rtl">
+      <div className="w-full max-w-2xl glass-panel rounded-3xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
-              <Eye className="w-6 h-6 text-blue-400" />
+        <div className="relative p-6 border-b border-white/10 bg-gradient-to-r from-blue-500/20 to-cyan-500/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
+                <Eye className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">{t('accessibility.title')}</h2>
+                <p className="text-sm text-gray-400">{t('accessibility.subtitle')}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">נגישות</h2>
-              <p className="text-sm text-gray-400">התאם את האפליקציה לצרכים שלך</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-            aria-label="סגור"
-          >
-            ✕
-          </button>
         </div>
 
-        {/* Settings */}
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        {/* Content */}
+        <div className="p-6 space-y-6">
           {/* Font Size */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-white font-medium">
-              <Type className="w-5 h-5 text-blue-400" />
-              גודל גופן
-            </label>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <ZoomIn className="w-5 h-5 text-blue-400" />
+              <label className="text-sm font-medium text-white">
+                {t('accessibility.fontSize')}
+              </label>
+            </div>
             <div className="grid grid-cols-4 gap-2">
               {(['small', 'medium', 'large', 'xlarge'] as const).map((size) => (
                 <button
                   key={size}
-                  onClick={() => handleSettingChange('fontSize', size)}
-                  className={`px-4 py-3 rounded-xl border transition-all ${
-                    settings.fontSize === size
-                      ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
-                  }`}
+                  onClick={() => setFontSize(size)}
+                  className={'px-4 py-3 rounded-xl border-2 transition-all ' + 
+                            (fontSize === size 
+                              ? 'border-blue-500 bg-blue-500/20 text-white' 
+                              : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20')}
                 >
-                  {size === 'small' && 'קטן'}
-                  {size === 'medium' && 'בינוני'}
-                  {size === 'large' && 'גדול'}
-                  {size === 'xlarge' && 'ענק'}
+                  <div className="text-center">
+                    <div className={'font-bold ' + 
+                                   (size === 'small' ? 'text-xs' : 
+                                    size === 'medium' ? 'text-sm' : 
+                                    size === 'large' ? 'text-base' : 'text-lg')}>
+                      Aa
+                    </div>
+                    <div className="text-xs mt-1">{t('accessibility.' + size)}</div>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
           {/* High Contrast */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 
+                        hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-3">
-              <Contrast className="w-5 h-5 text-purple-400" />
+              <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-500/20 to-amber-500/20">
+                <Eye className="w-5 h-5 text-yellow-400" />
+              </div>
               <div>
-                <p className="text-white font-medium">ניגודיות גבוהה</p>
-                <p className="text-sm text-gray-400">הגבר ניגודיות לקריאה טובה יותר</p>
+                <p className="text-sm font-medium text-white">{t('accessibility.highContrast')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('accessibility.highContrastDesc')}</p>
               </div>
             </div>
             <button
-              onClick={() => handleSettingChange('highContrast', !settings.highContrast)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.highContrast ? 'bg-purple-500' : 'bg-gray-600'
-              }`}
-              aria-label="ניגודיות גבוהה"
+              onClick={() => setHighContrast(!highContrast)}
+              className={'relative w-14 h-7 rounded-full transition-colors ' + 
+                        (highContrast ? 'bg-blue-500' : 'bg-gray-600')}
             >
               <div
-                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.highContrast ? 'translate-x-7' : 'translate-x-1'
-                }`}
+                className={'absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ' + 
+                          (highContrast ? 'translate-x-8' : 'translate-x-1')}
               />
             </button>
           </div>
 
           {/* Reduce Motion */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 
+                        hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-3">
-              <Eye className="w-5 h-5 text-emerald-400" />
+              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                <MousePointer className="w-5 h-5 text-purple-400" />
+              </div>
               <div>
-                <p className="text-white font-medium">הפחת תנועה</p>
-                <p className="text-sm text-gray-400">הפחת אנימציות ומעברים</p>
+                <p className="text-sm font-medium text-white">{t('accessibility.reduceMotion')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('accessibility.reduceMotionDesc')}</p>
               </div>
             </div>
             <button
-              onClick={() => handleSettingChange('reduceMotion', !settings.reduceMotion)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.reduceMotion ? 'bg-emerald-500' : 'bg-gray-600'
-              }`}
-              aria-label="הפחת תנועה"
+              onClick={() => setReduceMotion(!reduceMotion)}
+              className={'relative w-14 h-7 rounded-full transition-colors ' + 
+                        (reduceMotion ? 'bg-purple-500' : 'bg-gray-600')}
             >
               <div
-                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.reduceMotion ? 'translate-x-7' : 'translate-x-1'
-                }`}
+                className={'absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ' + 
+                          (reduceMotion ? 'translate-x-8' : 'translate-x-1')}
               />
             </button>
           </div>
 
           {/* Keyboard Navigation */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 
+                        hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-3">
-              <Keyboard className="w-5 h-5 text-orange-400" />
+              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+                <Keyboard className="w-5 h-5 text-emerald-400" />
+              </div>
               <div>
-                <p className="text-white font-medium">ניווט מקלדת</p>
-                <p className="text-sm text-gray-400">הדגש אלמנטים בניווט מקלדת</p>
+                <p className="text-sm font-medium text-white">{t('accessibility.keyboardNav')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('accessibility.keyboardNavDesc')}</p>
               </div>
             </div>
             <button
-              onClick={() => handleSettingChange('keyboardNav', !settings.keyboardNav)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.keyboardNav ? 'bg-orange-500' : 'bg-gray-600'
-              }`}
-              aria-label="ניווט מקלדת"
+              onClick={() => setKeyboardNav(!keyboardNav)}
+              className={'relative w-14 h-7 rounded-full transition-colors ' + 
+                        (keyboardNav ? 'bg-emerald-500' : 'bg-gray-600')}
             >
               <div
-                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.keyboardNav ? 'translate-x-7' : 'translate-x-1'
-                }`}
+                className={'absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ' + 
+                          (keyboardNav ? 'translate-x-8' : 'translate-x-1')}
               />
             </button>
           </div>
 
           {/* Screen Reader */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 
+                        hover:bg-white/10 transition-colors">
             <div className="flex items-center gap-3">
-              <MonitorSpeaker className="w-5 h-5 text-pink-400" />
+              <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-red-500/20">
+                <Speaker className="w-5 h-5 text-orange-400" />
+              </div>
               <div>
-                <p className="text-white font-medium">תמיכה בקורא מסך</p>
-                <p className="text-sm text-gray-400">אופטימיזציה לקוראי מסך</p>
+                <p className="text-sm font-medium text-white">{t('accessibility.screenReader')}</p>
+                <p className="text-xs text-gray-400 mt-1">{t('accessibility.screenReaderDesc')}</p>
               </div>
             </div>
             <button
-              onClick={() => handleSettingChange('screenReader', !settings.screenReader)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.screenReader ? 'bg-pink-500' : 'bg-gray-600'
-              }`}
-              aria-label="תמיכה בקורא מסך"
+              onClick={() => setScreenReader(!screenReader)}
+              className={'relative w-14 h-7 rounded-full transition-colors ' + 
+                        (screenReader ? 'bg-orange-500' : 'bg-gray-600')}
             >
               <div
-                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.screenReader ? 'translate-x-7' : 'translate-x-1'
-                }`}
+                className={'absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ' + 
+                          (screenReader ? 'translate-x-8' : 'translate-x-1')}
               />
             </button>
           </div>
 
-          {/* Keyboard Shortcuts */}
-          <div className="mt-8 space-y-3">
-            <h3 className="flex items-center gap-2 text-white font-medium">
-              <Keyboard className="w-5 h-5 text-blue-400" />
-              קיצורי מקלדת
-            </h3>
-            <div className="space-y-2">
-              {shortcuts.map((shortcut, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/5"
-                >
-                  <span className="text-gray-300 text-sm">{shortcut.description}</span>
-                  <kbd className="px-3 py-1 rounded-lg bg-white/10 text-white text-sm font-mono border border-white/20">
-                    {shortcut.keys}
-                  </kbd>
-                </div>
-              ))}
+          {/* Keyboard Shortcuts Info */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+            <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+              <Keyboard className="w-4 h-4 text-blue-400" />
+              {t('accessibility.shortcuts')}
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-300">
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 rounded bg-white/10 font-mono">Ctrl+/</kbd>
+                <span>פתח נגישות</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 rounded bg-white/10 font-mono">Ctrl+K</kbd>
+                <span>חיפוש</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 rounded bg-white/10 font-mono">Ctrl+M</kbd>
+                <span>מצב קולי</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <kbd className="px-2 py-1 rounded bg-white/10 font-mono">Esc</kbd>
+                <span>סגור חלון</span>
+              </div>
             </div>
-          </div>
-
-          {/* Info */}
-          <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-            <p className="text-sm text-blue-300">
-              💡 ההגדרות נשמרות אוטומטית ויחולו בכל פעם שתפתח את האפליקציה
-            </p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-white/10">
+        {/* Actions */}
+        <div className="p-6 border-t border-white/10 flex items-center gap-3">
           <button
             onClick={onClose}
-            className="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 
-                     text-white font-medium hover:shadow-lg hover:shadow-blue-500/50 transition-all"
+            className="flex-1 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 
+                     text-white font-medium transition-colors"
           >
-            סגור
+            {t('common.cancel')}
+          </button>
+          <button
+            onClick={saveSettings}
+            className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 
+                     hover:shadow-lg hover:shadow-blue-500/50 text-white font-medium transition-all"
+          >
+            {t('common.save')}
           </button>
         </div>
       </div>

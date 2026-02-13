@@ -1,4 +1,4 @@
-﻿/* ================================
+/* ================================
    Nudge Me OS - Main Styles
    ================================ */
 
@@ -361,4 +361,53 @@ body {
 /* Dark Mode (already default) */
 @media (prefers-color-scheme: light) {
   /* Optional: Add light mode support here */
+}
+/* High Contrast Mode */
+.high-contrast {
+  --contrast-boost: 1.5;
+  filter: contrast(var(--contrast-boost));
+}
+
+.high-contrast .glass-panel {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Reduce Motion */
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Keyboard Navigation */
+.keyboard-nav *:focus {
+  outline: 3px solid #10b981;
+  outline-offset: 2px;
+}
+
+/* Theme Variables */
+[data-theme="sunset"] {
+  --color-primary: #f97316;
+  --color-secondary: #ec4899;
+}
+
+[data-theme="forest"] {
+  --color-primary: #10b981;
+  --color-secondary: #14b8a6;
+}
+
+[data-theme="ocean"] {
+  --color-primary: #3b82f6;
+  --color-secondary: #06b6d4;
+}
+
+[data-theme="lavender"] {
+  --color-primary: #a855f7;
+  --color-secondary: #ec4899;
+}
+
+[data-theme="dark"] {
+  --color-primary: #6b7280;
+  --color-secondary: #475569;
 }

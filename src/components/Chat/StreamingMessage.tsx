@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 

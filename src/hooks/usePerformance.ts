@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Debounce hook - delays execution until after delay ms have passed

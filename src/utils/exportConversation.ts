@@ -1,4 +1,4 @@
-﻿import { format } from 'date-fns';
+import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import type { Message } from '../contexts/ConversationContext';
 

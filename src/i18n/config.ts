@@ -1,4 +1,4 @@
-﻿import i18n from 'i18next';
+import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
@@ -7,33 +7,23 @@ import heTranslation from '../locales/he/translation.json';
 import enTranslation from '../locales/en/translation.json';
 import arTranslation from '../locales/ar/translation.json';
 
-// Language resources
 const resources = {
-  he: {
-    translation: heTranslation,
-  },
-  en: {
-    translation: enTranslation,
-  },
-  ar: {
-    translation: arTranslation,
-  },
+  he: { translation: heTranslation },
+  en: { translation: enTranslation },
+  ar: { translation: arTranslation },
 };
 
-// Supported languages
 export const supportedLanguages = [
   { code: 'he', name: 'עברית', dir: 'rtl', flag: '🇮🇱' },
   { code: 'en', name: 'English', dir: 'ltr', flag: '🇺🇸' },
   { code: 'ar', name: 'العربية', dir: 'rtl', flag: '🇸🇦' },
 ];
 
-// Get language direction
 export const getLanguageDirection = (lang: string): 'rtl' | 'ltr' => {
   const language = supportedLanguages.find(l => l.code === lang);
   return language?.dir || 'rtl';
 };
 
-// Initialize i18next
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -49,26 +39,24 @@ i18n
     },
 
     interpolation: {
-      escapeValue: false, // React already escapes
+      escapeValue: false,
     },
 
     react: {
       useSuspense: true,
     },
 
-    // Debug in development
-    debug: import.meta.env.DEV,
+    debug: false,
   });
 
-// Apply direction to document
 i18n.on('languageChanged', (lng) => {
   const dir = getLanguageDirection(lng);
   document.documentElement.setAttribute('dir', dir);
   document.documentElement.setAttribute('lang', lng);
+  document.title = lng === 'he' ? 'Nudge Me OS - עוזר אישי' : 'Nudge Me OS';
   localStorage.setItem('nudge-language', lng);
 });
 
-// Set initial direction
 const initialDir = getLanguageDirection(i18n.language);
 document.documentElement.setAttribute('dir', initialDir);
 document.documentElement.setAttribute('lang', i18n.language);

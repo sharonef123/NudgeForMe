@@ -1,114 +1,179 @@
-﻿import { Clock, Trash2, MessageSquare, Mic } from 'lucide-react';
-import { useConversation } from '../../contexts/ConversationContext';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { MessageSquare, Clock, Trash2, Search, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 
-interface SessionsListProps {
-  onSelectSession: (sessionId: string) => void;
-  onClose: () => void;
+interface Session {
+  id: string;
+  title: string;
+  lastMessage: string;
+  timestamp: Date;
+  messageCount: number;
 }
 
-const SessionsList = ({ onSelectSession, onClose }: SessionsListProps) => {
-  const { sessions, currentSession, deleteSession, createNewSession } = useConversation();
+const SessionsList = () => {
+  const { t } = useTranslation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sessions] = useState<Session[]>([
+    {
+      id: '1',
+      title: 'ביטוח לאומי - בירור מצב',
+      lastMessage: 'תודה על המידע!',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30),
+      messageCount: 12,
+    },
+    {
+      id: '2',
+      title: 'חישוב שעות עבודה',
+      lastMessage: 'אתה יכול לעבוד עוד 18 שעות השבוע',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+      messageCount: 8,
+    },
+    {
+      id: '3',
+      title: 'צרכי הילדים לבית הספר',
+      lastMessage: 'הכנתי רשימה מסודרת',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
+      messageCount: 15,
+    },
+  ]);
 
-  const formatDate = (date: Date) => {
-    return formatDistanceToNow(date, { addSuffix: true, locale: he });
+  const filteredSessions = sessions.filter(session =>
+    session.title.includes(searchQuery) || session.lastMessage.includes(searchQuery)
+  );
+
+  const groupSessions = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    return {
+      today: filteredSessions.filter(s => s.timestamp >= today),
+      yesterday: filteredSessions.filter(s => s.timestamp >= yesterday && s.timestamp < today),
+      thisWeek: filteredSessions.filter(s => s.timestamp >= weekAgo && s.timestamp < yesterday),
+      older: filteredSessions.filter(s => s.timestamp < weekAgo),
+    };
   };
 
+  const grouped = groupSessions();
+
+  const SessionItem = ({ session }: { session: Session }) => (
+    <button
+      className="w-full group relative overflow-hidden p-4 rounded-xl bg-white/5 border border-white/10 
+               hover:bg-white/10 hover:border-white/20 transition-all text-right"
+    >
+      <div className="flex items-start gap-3">
+        <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex-shrink-0">
+          <MessageSquare className="w-4 h-4 text-emerald-400" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-medium text-white truncate mb-1">
+            {session.title}
+          </h4>
+          <p className="text-xs text-gray-400 truncate mb-2">
+            {session.lastMessage}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <Clock className="w-3 h-3" />
+            <span>
+              {formatDistanceToNow(session.timestamp, { locale: he, addSuffix: true })}
+            </span>
+            <span>•</span>
+            <span>{session.messageCount} הודעות</span>
+          </div>
+        </div>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            // Delete session
+          }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-lg hover:bg-red-500/20"
+        >
+          <Trash2 className="w-4 h-4 text-red-400" />
+        </button>
+      </div>
+    </button>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" dir="rtl">
-      <div className="w-full max-w-2xl glass-panel rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">שיחות שמורות</h2>
-          <button
-            onClick={createNewSession}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-500 text-white text-sm font-medium hover:shadow-lg transition-all"
-          >
-            + שיחה חדשה
-          </button>
-        </div>
+    <div className="glass-panel rounded-2xl p-4 h-full" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-white">{t('sessions.title')}</h3>
+        <button className="p-2 rounded-xl hover:bg-white/10 text-emerald-400 transition-colors">
+          <Plus className="w-5 h-5" />
+        </button>
+      </div>
 
-        {/* Sessions List */}
-        <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">
-          {sessions.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>אין שיחות שמורות</p>
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="חפש שיחות..."
+          className="w-full pr-10 pl-4 py-2 rounded-xl bg-white/5 border border-white/10 
+                   text-white placeholder-gray-500 outline-none focus:border-emerald-500/50 transition-colors"
+        />
+      </div>
+
+      {/* Sessions List */}
+      <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+        {grouped.today.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-gray-400 mb-2">{t('sessions.today')}</h4>
+            <div className="space-y-2">
+              {grouped.today.map(session => (
+                <SessionItem key={session.id} session={session} />
+              ))}
             </div>
-          ) : (
-            sessions.map(session => (
-              <div
-                key={session.id}
-                className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                  currentSession?.id === session.id
-                    ? 'bg-emerald-500/10 border-emerald-500/30'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
-                }`}
-                onClick={() => {
-                  onSelectSession(session.id);
-                  onClose();
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-medium truncate mb-1">
-                      {session.title}
-                    </h3>
-                    
-                    <div className="flex items-center gap-4 text-xs text-gray-400">
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" />
-                        <span>{session.messages.length}</span>
-                      </div>
-                      
-                      {session.metadata?.voiceInteractions && session.metadata.voiceInteractions > 0 && (
-                        <div className="flex items-center gap-1">
-                          <Mic className="w-3 h-3" />
-                          <span>{session.metadata.voiceInteractions}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatDate(session.updatedAt)}</span>
-                      </div>
-                    </div>
-                    
-                    {session.messages.length > 0 && (
-                      <p className="text-sm text-gray-500 mt-2 truncate">
-                        {session.messages[session.messages.length - 1].content}
-                      </p>
-                    )}
-                  </div>
+          </div>
+        )}
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm('למחוק את השיחה?')) {
-                        deleteSession(session.id);
-                      }
-                    }}
-                    className="p-2 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors"
-                    aria-label="מחק שיחה"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        {grouped.yesterday.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-gray-400 mb-2">{t('sessions.yesterday')}</h4>
+            <div className="space-y-2">
+              {grouped.yesterday.map(session => (
+                <SessionItem key={session.id} session={session} />
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Footer */}
-        <div className="p-4 border-t border-white/10">
-          <button
-            onClick={onClose}
-            className="w-full py-2 rounded-xl border border-white/10 text-white hover:bg-white/5 transition-colors"
-          >
-            סגור
-          </button>
-        </div>
+        {grouped.thisWeek.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-gray-400 mb-2">{t('sessions.thisWeek')}</h4>
+            <div className="space-y-2">
+              {grouped.thisWeek.map(session => (
+                <SessionItem key={session.id} session={session} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {grouped.older.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-gray-400 mb-2">{t('sessions.older')}</h4>
+            <div className="space-y-2">
+              {grouped.older.map(session => (
+                <SessionItem key={session.id} session={session} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {filteredSessions.length === 0 && (
+          <div className="text-center py-12">
+            <MessageSquare className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400">{t('sessions.noSessions')}</p>
+          </div>
+        )}
       </div>
     </div>
   );

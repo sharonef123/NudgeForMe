@@ -1,47 +1,29 @@
-﻿import { useState, useEffect } from 'react';
-import { Settings, Volume2, Zap, User } from 'lucide-react';
-
-interface VoiceSettings {
-  voiceIndex: number;
-  rate: number;
-  pitch: number;
-  volume: number;
-  autoSpeak: boolean;
-}
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Volume2, Play, RotateCcw, X, Sliders } from 'lucide-react';
 
 interface VoicePersonalizationProps {
-  onSettingsChange: (settings: VoiceSettings) => void;
+  onSettingsChange: (settings: any) => void;
   onClose: () => void;
 }
 
 const VoicePersonalization = ({ onSettingsChange, onClose }: VoicePersonalizationProps) => {
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [settings, setSettings] = useState<VoiceSettings>({
-    voiceIndex: 0,
-    rate: 0.9,
-    pitch: 1,
-    volume: 1,
-    autoSpeak: true,
-  });
+  const { t } = useTranslation();
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>('');
+  const [rate, setRate] = useState(1.0);
+  const [pitch, setPitch] = useState(1.0);
+  const [volume, setVolume] = useState(1.0);
+  const [autoSpeak, setAutoSpeak] = useState(false);
 
   useEffect(() => {
-    // Load saved settings
-    const saved = localStorage.getItem('nudge-voice-settings');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSettings(parsed);
-      } catch (error) {
-        console.error('Failed to load voice settings:', error);
-      }
-    }
-
-    // Load available voices
     const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      // Filter Hebrew voices
-      const hebrewVoices = voices.filter(v => v.lang.startsWith('he'));
-      setAvailableVoices(hebrewVoices.length > 0 ? hebrewVoices : voices);
+      const availableVoices = window.speechSynthesis.getVoices();
+      const hebrewVoices = availableVoices.filter(v => v.lang.startsWith('he'));
+      setVoices(hebrewVoices.length > 0 ? hebrewVoices : availableVoices);
+      if (hebrewVoices.length > 0) {
+        setSelectedVoice(hebrewVoices[0].name);
+      }
     };
 
     loadVoices();
@@ -52,209 +34,199 @@ const VoicePersonalization = ({ onSettingsChange, onClose }: VoicePersonalizatio
     };
   }, []);
 
-  const handleSettingChange = (key: keyof VoiceSettings, value: number | boolean) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    
-    // Save to localStorage
-    localStorage.setItem('nudge-voice-settings', JSON.stringify(newSettings));
-    
-    // Notify parent
-    onSettingsChange(newSettings);
-  };
-
   const testVoice = () => {
-    const utterance = new SpeechSynthesisUtterance('שלום! זה הקול שבחרת. איך זה נשמע?');
-    
-    if (availableVoices[settings.voiceIndex]) {
-      utterance.voice = availableVoices[settings.voiceIndex];
-    }
-    
-    utterance.rate = settings.rate;
-    utterance.pitch = settings.pitch;
-    utterance.volume = settings.volume;
-    utterance.lang = 'he-IL';
-
-    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance('שלום! זה קול הבדיקה שלי');
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) utterance.voice = voice;
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = volume;
     window.speechSynthesis.speak(utterance);
   };
 
-  const resetToDefaults = () => {
-    const defaults: VoiceSettings = {
-      voiceIndex: 0,
-      rate: 0.9,
-      pitch: 1,
-      volume: 1,
-      autoSpeak: true,
-    };
-    setSettings(defaults);
-    localStorage.setItem('nudge-voice-settings', JSON.stringify(defaults));
-    onSettingsChange(defaults);
+  const resetSettings = () => {
+    setRate(1.0);
+    setPitch(1.0);
+    setVolume(1.0);
+    setAutoSpeak(false);
+  };
+
+  const saveSettings = () => {
+    onSettingsChange({ selectedVoice, rate, pitch, volume, autoSpeak });
+    window.notify?.success('הגדרות נשמרו', 'העדפות הקול שלך עודכנו');
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" dir="rtl">
-      <div className="w-full max-w-xl glass-panel rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl" dir="rtl">
+      <div className="w-full max-w-2xl glass-panel rounded-3xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-              <Settings className="w-6 h-6 text-purple-400" />
+        <div className="relative p-6 border-b border-white/10 bg-gradient-to-r from-purple-500/20 to-pink-500/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
+                <Volume2 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">{t('voiceSettings.title')}</h2>
+                <p className="text-sm text-gray-400">{t('voiceSettings.subtitle')}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">התאמת קול אישית</h2>
-              <p className="text-sm text-gray-400">התאם את הקול לפי העדפתך</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
         </div>
 
-        {/* Settings */}
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        {/* Content */}
+        <div className="p-6 space-y-6">
           {/* Voice Selection */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-white font-medium">
-              <User className="w-5 h-5 text-purple-400" />
-              בחירת קול
+          <div>
+            <label className="block text-sm font-medium text-white mb-3">
+              {t('voiceSettings.selectVoice')}
             </label>
             <select
-              value={settings.voiceIndex}
-              onChange={(e) => handleSettingChange('voiceIndex', parseInt(e.target.value))}
-              className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white
-                       focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              value={selectedVoice}
+              onChange={(e) => setSelectedVoice(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white 
+                       outline-none focus:border-purple-500/50 transition-colors"
             >
-              {availableVoices.map((voice, index) => (
-                <option key={index} value={index} className="bg-slate-800">
+              {voices.map((voice) => (
+                <option key={voice.name} value={voice.name} className="bg-slate-800">
                   {voice.name} ({voice.lang})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Rate (Speed) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-white font-medium">
-                <Zap className="w-5 h-5 text-emerald-400" />
-                מהירות דיבור
+          {/* Rate Slider */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-white">
+                {t('voiceSettings.rate')}
               </label>
-              <span className="text-emerald-400 font-mono">{settings.rate.toFixed(1)}x</span>
+              <span className="text-sm text-gray-400">{rate.toFixed(1)}x</span>
             </div>
             <input
               type="range"
               min="0.5"
               max="2"
               step="0.1"
-              value={settings.rate}
-              onChange={(e) => handleSettingChange('rate', parseFloat(e.target.value))}
+              value={rate}
+              onChange={(e) => setRate(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-                       [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-emerald-400"
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
+                       [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 
+                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>איטי</span>
-              <span>רגיל</span>
-              <span>מהיר</span>
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>{t('voiceSettings.slow')}</span>
+              <span>{t('voiceSettings.normal')}</span>
+              <span>{t('voiceSettings.fast')}</span>
             </div>
           </div>
 
-          {/* Pitch */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-white font-medium">
-                <Volume2 className="w-5 h-5 text-blue-400" />
-                גובה צליל
+          {/* Pitch Slider */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-white">
+                {t('voiceSettings.pitch')}
               </label>
-              <span className="text-blue-400 font-mono">{settings.pitch.toFixed(1)}</span>
+              <span className="text-sm text-gray-400">{pitch.toFixed(1)}</span>
             </div>
             <input
               type="range"
               min="0.5"
               max="2"
               step="0.1"
-              value={settings.pitch}
-              onChange={(e) => handleSettingChange('pitch', parseFloat(e.target.value))}
+              value={pitch}
+              onChange={(e) => setPitch(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500
-                       [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-blue-400"
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
+                       [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-pink-500 
+                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>נמוך</span>
-              <span>רגיל</span>
-              <span>גבוה</span>
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>{t('voiceSettings.low')}</span>
+              <span>{t('voiceSettings.medium')}</span>
+              <span>{t('voiceSettings.high')}</span>
             </div>
           </div>
 
-          {/* Volume */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-white font-medium">
-                <Volume2 className="w-5 h-5 text-orange-400" />
-                עוצמת קול
+          {/* Volume Slider */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-white">
+                {t('voiceSettings.volume')}
               </label>
-              <span className="text-orange-400 font-mono">{Math.round(settings.volume * 100)}%</span>
+              <span className="text-sm text-gray-400">{Math.round(volume * 100)}%</span>
             </div>
             <input
               type="range"
               min="0"
               max="1"
               step="0.1"
-              value={settings.volume}
-              onChange={(e) => handleSettingChange('volume', parseFloat(e.target.value))}
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
-                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-orange-500
-                       [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:bg-orange-400"
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
+                       [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-blue-500 
+                       [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-gray-400">
-              <span>שקט</span>
-              <span>בינוני</span>
-              <span>חזק</span>
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>{t('voiceSettings.quiet')}</span>
+              <span>{t('voiceSettings.loud')}</span>
             </div>
           </div>
 
-          {/* Auto-Speak Toggle */}
+          {/* Auto Speak Toggle */}
           <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
             <div>
-              <p className="text-white font-medium">הקראה אוטומטית</p>
-              <p className="text-sm text-gray-400">הקרא תשובות אוטומטית בלי לחיצה</p>
+              <p className="text-sm font-medium text-white">{t('voiceSettings.autoSpeak')}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('voiceSettings.autoSpeakDesc')}</p>
             </div>
             <button
-              onClick={() => handleSettingChange('autoSpeak', !settings.autoSpeak)}
-              className={`relative w-14 h-8 rounded-full transition-colors ${
-                settings.autoSpeak ? 'bg-emerald-500' : 'bg-gray-600'
-              }`}
+              onClick={() => setAutoSpeak(!autoSpeak)}
+              className={'relative w-14 h-7 rounded-full transition-colors ' + 
+                        (autoSpeak ? 'bg-emerald-500' : 'bg-gray-600')}
             >
               <div
-                className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  settings.autoSpeak ? 'translate-x-7' : 'translate-x-1'
-                }`}
+                className={'absolute top-1 w-5 h-5 bg-white rounded-full transition-transform ' + 
+                          (autoSpeak ? 'translate-x-8' : 'translate-x-1')}
               />
             </button>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-6 border-t border-white/10 flex gap-3">
+        {/* Actions */}
+        <div className="p-6 border-t border-white/10 flex items-center gap-3">
           <button
             onClick={testVoice}
-            className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 
-                     text-white font-medium hover:shadow-lg hover:shadow-purple-500/50 transition-all"
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl 
+                     bg-gradient-to-r from-blue-500 to-cyan-500 hover:shadow-lg 
+                     hover:shadow-blue-500/50 text-white font-medium transition-all"
           >
-            🔊 נסה את הקול
+            <Play className="w-5 h-5" />
+            {t('voiceSettings.testVoice')}
           </button>
+
           <button
-            onClick={resetToDefaults}
-            className="px-6 py-3 rounded-xl border border-white/20 text-white hover:bg-white/5 transition-colors"
+            onClick={resetSettings}
+            className="p-3 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            title={t('voiceSettings.reset')}
           >
-            איפוס
+            <RotateCcw className="w-5 h-5" />
+          </button>
+
+          <button
+            onClick={saveSettings}
+            className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 
+                     hover:shadow-lg hover:shadow-emerald-500/50 text-white font-medium transition-all"
+          >
+            {t('common.save')}
           </button>
         </div>
       </div>

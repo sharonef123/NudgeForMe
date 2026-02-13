@@ -1,71 +1,64 @@
-﻿import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Languages, Check } from 'lucide-react';
-import { supportedLanguages, getLanguageDirection } from '../../i18n/config';
+import { Globe, Check, ChevronDown } from 'lucide-react';
+import { supportedLanguages } from '../../i18n/config';
 
-interface LanguageSwitcherProps {
-  className?: string;
-}
-
-const LanguageSwitcher = ({ className = '' }: LanguageSwitcherProps) => {
+const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentLanguage = supportedLanguages.find(
-    (lang) => lang.code === i18n.language
-  ) || supportedLanguages[0];
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
 
-  const changeLanguage = (langCode: string) => {
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLanguageChange = (langCode: string) => {
+    const langName = supportedLanguages.find(l => l.code === langCode)?.name || '';
     i18n.changeLanguage(langCode);
-    const dir = getLanguageDirection(langCode);
-    document.documentElement.setAttribute('dir', dir);
     setIsOpen(false);
+    window.notify?.success('שפה שונתה', 'השפה עודכנה ל' + langName);
   };
 
+  const currentLanguage = supportedLanguages.find(lang => lang.code === i18n.language) || supportedLanguages[0];
+
   return (
-    <div className={`relative ${className}`}>
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 border border-white/20 
-                 hover:bg-white/15 transition-colors text-white"
-        aria-label="Change language"
+        className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 text-gray-400 
+                 hover:text-white transition-colors"
       >
-        <Languages className="w-5 h-5" />
-        <span className="text-xl">{currentLanguage.flag}</span>
-        <span className="hidden sm:inline">{currentLanguage.name}</span>
+        <Globe className="w-5 h-5" />
+        <span className="text-2xl">{currentLanguage.flag}</span>
+        <span className="hidden md:inline text-sm font-medium">{currentLanguage.name}</span>
+        <ChevronDown className={'w-4 h-4 transition-transform ' + (isOpen ? 'rotate-180' : '')} />
       </button>
 
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-
-          {/* Dropdown */}
-          <div className="absolute top-full mt-2 right-0 z-50 min-w-[200px] glass-panel rounded-xl 
-                        shadow-2xl overflow-hidden animate-fade-in-up">
-            {supportedLanguages.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => changeLanguage(lang.code)}
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 
-                          hover:bg-white/10 transition-colors text-left ${
-                            lang.code === i18n.language ? 'bg-white/5' : ''
-                          }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{lang.flag}</span>
-                  <span className="text-white font-medium">{lang.name}</span>
-                </div>
-                {lang.code === i18n.language && (
-                  <Check className="w-5 h-5 text-emerald-400" />
-                )}
-              </button>
-            ))}
-          </div>
-        </>
+        <div className="absolute top-full left-0 mt-2 w-48 glass-panel rounded-xl border border-white/10 
+                      shadow-2xl overflow-hidden animate-slide-down z-50">
+          {supportedLanguages.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => handleLanguageChange(lang.code)}
+              className={'w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors ' + 
+                        (i18n.language === lang.code ? 'bg-white/5' : '')}
+            >
+              <span className="text-2xl">{lang.flag}</span>
+              <span className="flex-1 text-left text-sm text-white font-medium">{lang.name}</span>
+              {i18n.language === lang.code && (
+                <Check className="w-4 h-4 text-emerald-400" />
+              )}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

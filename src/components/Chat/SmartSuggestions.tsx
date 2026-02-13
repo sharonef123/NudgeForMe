@@ -1,149 +1,123 @@
-﻿import { Lightbulb, Calendar, FileText, Calculator, Brain } from 'lucide-react';
-import { useConversation } from '../../contexts/ConversationContext';
-
-interface Suggestion {
-  id: string;
-  text: string;
-  icon: React.ReactNode;
-  category: 'general' | 'calendar' | 'document' | 'calculation' | 'smart';
-}
+import { useTranslation } from 'react-i18next';
+import { Sparkles, Calendar, Calculator, Users, FileText, Clock, Zap } from 'lucide-react';
 
 interface SmartSuggestionsProps {
   onSuggestionClick: (text: string) => void;
-  className?: string;
 }
 
-const SmartSuggestions = ({ onSuggestionClick, className = '' }: SmartSuggestionsProps) => {
-  const { currentSession, getRecentContext } = useConversation();
+const SmartSuggestions = ({ onSuggestionClick }: SmartSuggestionsProps) => {
+  const { t } = useTranslation();
 
-  const getContextualSuggestions = (): Suggestion[] => {
-    const recentMessages = getRecentContext(5);
-    
-    // If no messages, show initial suggestions
-    if (recentMessages.length === 0) {
-      return [
-        {
-          id: '1',
-          text: 'מה המצב שלי עם ביטוח לאומי?',
-          icon: <FileText className="w-4 h-4" />,
-          category: 'document'
-        },
-        {
-          id: '2',
-          text: 'תזכיר לי על פגישות השבוע',
-          icon: <Calendar className="w-4 h-4" />,
-          category: 'calendar'
-        },
-        {
-          id: '3',
-          text: 'חשב לי כמה אני יכול לעבוד השבוע',
-          icon: <Calculator className="w-4 h-4" />,
-          category: 'calculation'
-        },
-        {
-          id: '4',
-          text: 'מה הילדים צריכים לבית הספר?',
-          icon: <Brain className="w-4 h-4" />,
-          category: 'smart'
-        }
-      ];
-    }
-
-    // Context-aware suggestions based on recent conversation
-    const lastMessage = recentMessages[recentMessages.length - 1];
-    const contextSuggestions: Suggestion[] = [];
-
-    // Check for keywords and suggest related actions
-    if (lastMessage.content.includes('עבודה') || lastMessage.content.includes('משרה')) {
-      contextSuggestions.push({
-        id: 'job-scope',
-        text: 'בדוק שזה לא חורג מ-75%',
-        icon: <Calculator className="w-4 h-4" />,
-        category: 'calculation'
-      });
-    }
-
-    if (lastMessage.content.includes('פגישה') || lastMessage.content.includes('תור')) {
-      contextSuggestions.push({
-        id: 'calendar',
-        text: 'הוסף ליומן',
-        icon: <Calendar className="w-4 h-4" />,
-        category: 'calendar'
-      });
-    }
-
-    if (lastMessage.content.includes('ילד') || lastMessage.content.includes('נועם') || 
-        lastMessage.content.includes('כפיר') || lastMessage.content.includes('רותם')) {
-      contextSuggestions.push({
-        id: 'kids',
-        text: 'מה עוד צריך לדאוג להם?',
-        icon: <Brain className="w-4 h-4" />,
-        category: 'smart'
-      });
-    }
-
-    if (lastMessage.content.includes('מסמך') || lastMessage.content.includes('טופס')) {
-      contextSuggestions.push({
-        id: 'docs',
-        text: 'מה המסמכים שאני צריך?',
-        icon: <FileText className="w-4 h-4" />,
-        category: 'document'
-      });
-    }
-
-    // Add follow-up questions
-    contextSuggestions.push({
-      id: 'more',
-      text: 'ספר לי עוד',
-      icon: <Lightbulb className="w-4 h-4" />,
-      category: 'general'
-    });
-
-    contextSuggestions.push({
-      id: 'clarify',
-      text: 'הסבר לי בפשטות',
-      icon: <Brain className="w-4 h-4" />,
-      category: 'smart'
-    });
-
-    return contextSuggestions.slice(0, 4);
-  };
-
-  const suggestions = getContextualSuggestions();
-
-  if (suggestions.length === 0) return null;
+  const suggestions = [
+    {
+      icon: FileText,
+      text: t('suggestions.insurance'),
+      color: 'from-blue-500 to-cyan-500',
+      category: 'work',
+    },
+    {
+      icon: Calendar,
+      text: t('suggestions.meetings'),
+      color: 'from-purple-500 to-pink-500',
+      category: 'schedule',
+    },
+    {
+      icon: Calculator,
+      text: t('suggestions.workHours'),
+      color: 'from-emerald-500 to-teal-500',
+      category: 'work',
+    },
+    {
+      icon: Users,
+      text: t('suggestions.kids'),
+      color: 'from-orange-500 to-red-500',
+      category: 'family',
+    },
+    {
+      icon: Clock,
+      text: 'מה יש לי היום ביומן?',
+      color: 'from-indigo-500 to-blue-500',
+      category: 'schedule',
+    },
+    {
+      icon: Sparkles,
+      text: 'תזכיר לי דברים חשובים',
+      color: 'from-yellow-500 to-amber-500',
+      category: 'reminder',
+    },
+  ];
 
   return (
-    <div className={`space-y-2 ${className}`} dir="rtl">
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
-        <Lightbulb className="w-4 h-4" />
-        <span>הצעות חכמות:</span>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {suggestions.map(suggestion => (
-          <button
-            key={suggestion.id}
-            onClick={() => onSuggestionClick(suggestion.text)}
-            className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-emerald-500/30 transition-all group text-right"
-          >
-            <div className="text-emerald-400 group-hover:text-emerald-300 transition-colors">
-              {suggestion.icon}
-            </div>
-            <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1">
-              {suggestion.text}
-            </span>
-          </button>
-        ))}
+    <div className="glass-panel rounded-2xl p-6" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+          <Zap className="w-5 h-5 text-purple-400" />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-white">{t('chat.suggestions')}</h3>
+          <p className="text-sm text-gray-400">בחר כדי להתחיל שיחה</p>
+        </div>
       </div>
 
-      {currentSession && currentSession.messages.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <p className="text-xs text-gray-500 text-center">
-            💡 הצעות מבוססות על הקשר השיחה האחרונה
-          </p>
+      {/* Suggestions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {suggestions.map((suggestion, index) => {
+          const Icon = suggestion.icon;
+          return (
+            <button
+              key={index}
+              onClick={() => onSuggestionClick(suggestion.text)}
+              className="group relative overflow-hidden p-4 rounded-xl bg-white/5 border border-white/10 
+                       hover:bg-white/10 hover:border-white/20 transition-all text-right"
+            >
+              {/* Gradient Background on Hover */}
+              <div
+                className={\bsolute inset-0 bg-gradient-to-br \ opacity-0 
+                          group-hover:opacity-10 transition-opacity\}
+              />
+
+              {/* Content */}
+              <div className="relative flex items-center gap-3">
+                <div
+                  className={\p-3 rounded-xl bg-gradient-to-br \ text-white 
+                            shadow-lg group-hover:scale-110 transition-transform flex-shrink-0\}
+                >
+                  <Icon className="w-5 h-5" />
+                </div>
+                <p className="text-sm text-white font-medium flex-1">{suggestion.text}</p>
+              </div>
+
+              {/* Category Badge */}
+              <div className="mt-3">
+                <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-gray-400">
+                  {suggestion.category === 'work' && '💼 עבודה'}
+                  {suggestion.category === 'schedule' && '📅 יומן'}
+                  {suggestion.category === 'family' && '👨‍👩‍👧‍👦 משפחה'}
+                  {suggestion.category === 'reminder' && '⏰ תזכורת'}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Quick Tips */}
+      <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20">
+        <div className="flex items-start gap-3">
+          <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-emerald-300 font-medium mb-1">
+              💡 טיפים לשיחה טובה יותר
+            </p>
+            <ul className="text-xs text-gray-400 space-y-1">
+              <li>• היה ספציפי בשאלות שלך</li>
+              <li>• אפשר להעלות תמונות ומסמכים</li>
+              <li>• השתמש במצב הקולי לנוחות מקסימלית</li>
+            </ul>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

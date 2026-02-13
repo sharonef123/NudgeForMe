@@ -1,4 +1,4 @@
-﻿import { CheckCircle2, AlertCircle, Loader2, Mic, MicOff } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Mic, MicOff } from 'lucide-react';
 
 export type FeedbackStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'success' | 'error';
 
