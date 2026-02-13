@@ -1,0 +1,30 @@
+﻿=== 🚀 HOW TO INTEGRATE VOICE + DNA ===
+
+1. ADD IMPORTS (at top of App.tsx after existing imports):
+   
+   import VoiceButton from './VoiceChat/VoiceButton';
+   import DNAButton from './DNA/DNAButton';
+
+2. REPLACE MIC BUTTON (around line 800-850, in chat input):
+   
+   FIND THIS:
+   <button className="p-4 rounded-full text-slate-500">
+     <Mic className="w-5 h-5" />
+   </button>
+
+   REPLACE WITH:
+   <VoiceButton onTranscript={(text) => { 
+     setInputText(text); 
+   }} />
+
+3. ADD DNA BUTTON TO MESSAGES (around line 750-800, in chat messages):
+   
+   FIND THIS LINE:
+   {activeChat?.messages.map((msg) => (
+
+   AFTER THE MESSAGE CONTENT DIV, ADD:
+   {msg.role === 'user' && (
+     <DNAButton message={msg.content} messageId={msg.id} />
+   )}
+
+DONE! Save and test.

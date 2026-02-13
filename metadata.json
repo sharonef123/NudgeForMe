@@ -1,0 +1,8 @@
+{
+  "name": "Nudge For Me",
+  "description": "A proactive Life-OS designed to minimize friction and maximize leverage with an Israeli 'Tachles' attitude.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ]
+}

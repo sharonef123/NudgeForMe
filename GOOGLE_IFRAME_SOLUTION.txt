@@ -1,0 +1,18 @@
+﻿═══════════════════════════════════════════════
+🎯 IFRAME 403 - SOLUTION PLAN
+═══════════════════════════════════════════════
+
+Google blocks iframes for security (X-Frame-Options).
+
+SOLUTION: Build native widgets using Google APIs:
+  ✅ Calendar API → Show/edit events in our UI
+  ✅ Gmail API → Read/send emails in our UI  
+  ✅ Drive API → Browse/open files in our UI
+
+This is BETTER because:
+  - Full control over UI/UX
+  - Faster performance
+  - Better mobile experience
+  - Integrated with Nudge AI
+
+For now: Keep "Open in New Tab" button as fallback.
