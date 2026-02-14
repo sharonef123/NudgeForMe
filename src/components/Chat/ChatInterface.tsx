@@ -1,66 +1,35 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
+import { geminiService } from '../../services/geminiService';
 import { Send, Loader2 } from 'lucide-react';
-import MessageBubble from './MessageBubble';
-import TypingIndicator from './TypingIndicator';
-import { sendMessage, Message } from '../../services/geminiService';
 
-export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'שלום! אני Nudge, מערכת ההפעלה האישית שלך 🚀\n\nאני כאן כדי לעזור לך עם כל דבר - מתזמון היום, דרך החלטות קריירה, ועד תכנון פעילויות עם הילדים.\n\nמה תרצי לעשות היום?',
-      timestamp: new Date()
-    }
-  ]);
-  const [inputText, setInputText] = useState('');
+const ChatInterface = () => {
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputText,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
+    const userMessage = input.trim();
+    setInput('');
+    
+    // הוסף הודעת משתמש
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
     setIsLoading(true);
-
+    
     try {
-      const response = await sendMessage(inputText, messages);
+      // קריאה ל-Gemini
+      const response = await geminiService.chat(userMessage);
       
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: response,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '⚠️ מצטער, הייתה שגיאה בשליחת ההודעה. נסה שוב.',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
+      // הוסף תשובה
+      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error: any) {
+      console.error('Error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `❌ שגיאה: ${error.message}` 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -74,38 +43,64 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-          />
-        ))}
+    <div className="flex flex-col h-full bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50">
+      {/* Chat Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ direction: 'rtl' }}>
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            <div className="text-center">
+              <div className="text-4xl mb-4">👋</div>
+              <p className="text-lg">היי! אני נאדג׳, העוזר האישי שלך</p>
+              <p className="text-sm mt-2">שאל אותי כל דבר!</p>
+            </div>
+          </div>
+        ) : (
+          messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+            >
+              <div
+                className={`max-w-[80%] p-4 rounded-2xl ${
+                  msg.role === 'user'
+                    ? 'bg-emerald-500/20 border border-emerald-500/30'
+                    : 'bg-slate-800/50 border border-slate-700/50'
+                }`}
+              >
+                <p className="text-white whitespace-pre-wrap leading-relaxed">
+                  {msg.content}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
         
-        {isLoading && <TypingIndicator />}
-        
-        <div ref={messagesEndRef} />
+        {isLoading && (
+          <div className="flex justify-end">
+            <div className="bg-slate-800/50 border border-slate-700/50 p-4 rounded-2xl">
+              <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Area */}
-      <div className="glass-panel border-t border-white/10 p-4">
-        <div className="flex gap-3 items-end max-w-4xl mx-auto">
-          <textarea
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+      <div className="p-4 border-t border-slate-700/50">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="כתוב הודעה... (Enter לשליחה)"
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all resize-none max-h-32"
-            rows={1}
+            placeholder="הקלד הודעה..."
             disabled={isLoading}
+            className="flex-1 px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+            style={{ direction: 'rtl' }}
           />
-          
           <button
             onClick={handleSendMessage}
-            disabled={!inputText.trim() || isLoading}
-            className="p-3 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium hover:shadow-lg hover:shadow-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+            disabled={isLoading || !input.trim()}
+            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl font-bold text-white hover:from-emerald-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -117,4 +112,6 @@ export default function ChatInterface() {
       </div>
     </div>
   );
-}
+};
+
+export default ChatInterface;
