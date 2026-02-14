@@ -1,0 +1,64 @@
+﻿{
+  "common": {
+    "appName": "Nudge Me OS",
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "success": "نجح",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "edit": "تحرير",
+    "close": "إغلاق",
+    "search": "بحث",
+    "send": "إرسال",
+    "retry": "إعادة المحاولة",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "settings": "الإعدادات"
+  },
+  "voice": {
+    "listening": "جاري الاستماع...",
+    "processing": "جاري المعالجة...",
+    "speaking": "جاري التحدث...",
+    "inactive": "اضغط لبدء المحادثة",
+    "startRecording": "بدء التسجيل",
+    "stopRecording": "إيقاف التسجيل",
+    "autoRestart": "الاستماع تلقائياً مرة أخرى",
+    "permissionDenied": "تم رفض الوصول إلى الميكروفون",
+    "notSupported": "المتصفح لا يدعم التعرف على الصوت",
+    "voiceMode": "الوضع الصوتي",
+    "personalization": "تخصيص الصوت"
+  },
+  "chat": {
+    "placeholder": "اسألني أي شيء...",
+    "emptyState": "ابدأ محادثة جديدة",
+    "thinking": "جاري التفكير...",
+    "newConversation": "محادثة جديدة",
+    "conversationHistory": "سجل المحادثات",
+    "suggestions": "اقتراحات ذكية",
+    "noSuggestions": "لا توجد اقتراحات في الوقت الحالي",
+    "typingIndicator": "جاري الكتابة..."
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "language": "اللغة",
+    "theme": "السمة",
+    "voice": "إعدادات الصوت",
+    "accessibility": "إمكانية الوصول",
+    "about": "حول",
+    "version": "الإصدار",
+    "clearData": "مسح البيانات",
+    "clearDataConfirm": "هل أنت متأكد؟ سيتم حذف كل السجل."
+  },
+  "errors": {
+    "generic": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "network": "خطأ في الشبكة. تحقق من اتصالك.",
+    "apiKey": "مفتاح API غير صالح. يرجى التحقق من الإعدادات.",
+    "quota": "تم الوصول إلى حصة API. حاول مرة أخرى لاحقاً.",
+    "safety": "تم حظر الاستجابة لأسباب أمنية. حاول إعادة الصياغة.",
+    "imageProcessing": "خطأ في معالجة الصور. حاول مرة أخرى.",
+    "voicePermission": "لا توجد إذن للميكروفون",
+    "voiceNotSupported": "المتصفح لا يدعم التعرف على الصوت"
+  }
+}
