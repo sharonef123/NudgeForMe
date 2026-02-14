@@ -1,845 +1,140 @@
+﻿import { useEffect, useState } from 'react';
+import { Send, Loader2, Brain, Trash2 } from 'lucide-react';
+import { geminiService } from './services/geminiService';
+import { memoryService } from './services/memoryService';
+import VoiceInput from './components/VoiceInput';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Send, 
-  Mic, 
-  X, 
-  CheckCircle2, 
-  Clock, 
-  Trash2,
-  Zap,
-  Settings,
-  Calendar as CalendarIcon,
-  Home,
-  MessageSquare,
-  LayoutGrid,
-  Sparkles,
-  MoreVertical,
-  Star,
-  FolderOpen,
-  Edit2,
-  ChevronDown,
-  ArrowUpDown,
-  Pin,
-  Paperclip,
-  PhoneCall,
-  ExternalLink,
-  ListTodo,
-  Menu,
-  Plus,
-  Save,
-  Brain,
-  Search,
-  User,
-  Sun,
-  Moon,
-  GripVertical,
-  AlertCircle,
-  Check,
-  Mail,
-  HardDrive,
-  Merge,
-  ArrowLeft
-} from 'lucide-react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
-import { Wing, Message, Task, TaskTier, ChatSession, Topic, MemoryFact } from './types';
-import { sendMessageToGemini } from './geminiService';
-// ׳’ֲֲ¨ VOICE + DNA COMPONENTS
-import VoiceButton from './VoiceChat/VoiceButton';
-import DNAButton from './DNA/DNAButton';
-import GoogleToolsMenu from './GoogleTools/GoogleToolsMenu';
-import VoiceConversationMode from './VoiceChat/VoiceConversationMode';
-
-const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'chat' | 'tasks' | 'calendar' | 'dna'>('home');
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [isLiveVoiceMode, setIsLiveVoiceMode] = useState(false);
-  const [isThinkingMode, setIsThinkingMode] = useState(false);
-  const [isSearchEnabled, setIsSearchEnabled] = useState(false);
+function App() {
+  const [messages, setMessages] = useState<Array<{role: string; content: string}>>([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [inputText, setInputText] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchSource, setSearchSource] = useState<'chat' | 'mail' | 'drive' | 'calendar'>('chat');
-  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
-  
-  // --- Tasks State ---
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', title: '׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ©׳³ֲ³ײ³ג€” ׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ - Point AI', tier: TaskTier.TIER2, deadline: new Date().toISOString().split('T')[0] + 'T14:00', completed: false },
-    { id: '2', title: '׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ¡׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ£ ׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³ײ²ֲ', tier: TaskTier.TIER3, deadline: new Date().toISOString().split('T')[0] + 'T16:00', completed: false },
-    { id: '3', title: '׳³ֲ³ײ²ֲ¡׳³ֲ³ײ²ֲ§׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ¨׳³ֲ³ײ³ג€” ׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ§׳³ֲ³ײ»ֲ Synapse', tier: TaskTier.TIER1, deadline: '2024-05-22T10:00', completed: false }, 
-    { id: '4', title: '׳³ֲ³ײ²ֲ§׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ³ג€” ׳³ֲ³ײ²ֲ׳³ֲ³ײ³ג€”׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ג„¢', tier: TaskTier.TIER0, deadline: new Date().toISOString().split('T')[0] + 'T20:00', completed: false },
-  ]);
-  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const [quickTaskTitle, setQuickTaskTitle] = useState('');
+  const [memoryCount, setMemoryCount] = useState(0);
 
-  // --- Calendar Events ---
-  const [events] = useState([
-    { id: 'e1', title: '׳³ֲ³ײ»ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ', time: '09:00', type: 'health', color: 'bg-rose-500' },
-    { id: 'e2', title: '׳³ֲ³ײ²ֲ¦׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ', time: '13:00', type: 'family', color: 'bg-indigo-400' },
-    { id: 'e3', title: 'Zoom - ׳³ֲ³ײ²ֲ¦׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€” ׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ג€', time: '15:30', type: 'work', color: 'bg-amber-400' },
-  ]);
+  useEffect(() => {
+    setMemoryCount(memoryService.getMemoryCount());
+  }, [messages]);
 
-  // --- DNA / Memory State ---
-  const [dnaMemories, setDnaMemories] = useState<MemoryFact[]>([
-    { id: 'm1', fact: '׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ© ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ - ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¡׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¨ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ.', category: '׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ', timestamp: Date.now() },
-    { id: 'm2', fact: '׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€” ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ§׳³ֲ³ײ²ֲ¨ ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ 9:00 ׳³ֲ³ײ²ֲ-11:00.', category: '׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”', timestamp: Date.now() },
-    { id: 'm3', fact: '׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ§׳³ֲ³ײ»ֲ Synapse ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€” ׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ©.', category: '׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ', timestamp: Date.now() },
-  ]);
-  const [categories, setCategories] = useState(['׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ', '׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ', '׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”', '׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢']);
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCatName, setNewCatName] = useState('');
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  
-  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
-  const [newMemoryFact, setNewMemoryFact] = useState('');
-  const [newMemoryCategory, setNewMemoryCategory] = useState('׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢');
-
-  // --- Chat Data ---
-  const [chats, setChats] = useState<ChatSession[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
-
-  // --- Helpers ---
-  const activeChat = useMemo(() => chats.find(c => c.id === activeChatId), [chats, activeChatId]);
-
-  const isOverdue = (deadline?: string) => {
-    if (!deadline) return false;
-    return new Date(deadline) < new Date();
-  };
-
-  const formatTime = (timestamp: number) => {
-    return new Intl.DateTimeFormat('he-IL', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(new Date(timestamp));
-  };
-
-  const getTierLabel = (tier: TaskTier) => {
-    switch (tier) {
-      case TaskTier.TIER3: return '׳³ֲ³ײ²ֲ§׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ»ֲ׳³ֲ³׳’ג€ֲ¢';
-      case TaskTier.TIER2: return '׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ£';
-      case TaskTier.TIER1: return '׳³ֲ³׳’ג‚¬ג€׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֻ';
-      default: return '׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³ײ²ֲ¨׳³ֲ³ײ³ג€”׳³ֲ³׳’ג€ֲ¢';
-    }
-  };
-
-  const getTierColor = (tier: TaskTier) => {
-    switch (tier) {
-      case TaskTier.TIER3: return 'bg-rose-500';
-      case TaskTier.TIER2: return 'bg-orange-500';
-      case TaskTier.TIER1: return 'bg-indigo-500';
-      default: return 'bg-slate-400';
-    }
-  };
-
-  const getTierBorderColor = (tier: TaskTier) => {
-    switch (tier) {
-      case TaskTier.TIER3: return 'border-rose-500';
-      case TaskTier.TIER2: return 'border-orange-500';
-      case TaskTier.TIER1: return 'border-indigo-500';
-      default: return 'border-slate-400';
-    }
-  };
-
-  // --- Unified Agenda View Logic ---
-  const agendaItems = useMemo(() => {
-    const nowStr = new Date().toTimeString().split(' ')[0].slice(0, 5);
-    const today = new Date().toISOString().split('T')[0];
+  const handleSend = async (text?: string) => {
+    const messageText = text || input.trim();
+    if (!messageText || isLoading) return;
     
-    const todayTasks = tasks
-      .filter(t => !t.completed && (!t.deadline || t.deadline.startsWith(today) || isOverdue(t.deadline)))
-      .map(t => ({ 
-        id: t.id, 
-        title: t.title, 
-        time: t.deadline?.split('T')[1] || '׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ', 
-        type: 'task', 
-        tier: t.tier,
-        overdue: isOverdue(t.deadline)
-      }));
-    
-    const todayEvents = events.map(e => ({
-      id: e.id,
-      title: e.title,
-      time: e.time,
-      type: 'event',
-      color: e.color
-    }));
-
-    const all = [...todayTasks, ...todayEvents].sort((a, b) => {
-      if (a.time === '׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ') return -1;
-      if (b.time === '׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ') return 1;
-      return a.time.localeCompare(b.time);
-    });
-
-    // Identify the "Next up" item
-    let foundNext = false;
-    return all.map(item => {
-      const isNext = !foundNext && item.time !== '׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ' && item.time >= nowStr;
-      if (isNext) foundNext = true;
-      return { ...item, isUpcoming: isNext };
-    });
-  }, [tasks, events]);
-
-  // --- Actions ---
-  const startNewChat = () => {
-    const newChat: ChatSession = { id: Date.now().toString(), title: '׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ', messages: [], isFavorite: false, updatedAt: Date.now() };
-    setChats(prev => [newChat, ...prev]);
-    setActiveChatId(newChat.id);
-    setActiveTab('chat');
-    setIsHistoryOpen(false);
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
-    let currentChat = activeChat;
-    if (!currentChat) {
-      const newChat: ChatSession = { id: Date.now().toString(), title: inputText.slice(0, 30), messages: [], isFavorite: false, updatedAt: Date.now() };
-      setChats(prev => [newChat, ...prev]);
-      setActiveChatId(newChat.id);
-      currentChat = newChat;
-    }
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: inputText, timestamp: Date.now() };
-    const updatedMessages = [...currentChat.messages, userMsg];
-    setChats(prev => prev.map(c => c.id === currentChat!.id ? { ...c, messages: updatedMessages, updatedAt: Date.now() } : c));
-    setInputText('');
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: messageText }]);
     setIsLoading(true);
-    const result = await sendMessageToGemini(updatedMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] })), inputText, { useSearch: isSearchEnabled, useThinking: isThinkingMode });
-    const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'assistant', content: result.text, timestamp: Date.now() };
-    setChats(prev => prev.map(c => c.id === currentChat!.id ? { ...c, messages: [...updatedMessages, aiMsg], updatedAt: Date.now(), title: c.title === '׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ' ? inputText.slice(0, 30) : c.title } : c));
+    
+    try {
+      const response = await geminiService.chat(messageText);
+      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error: any) {
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `שגיאה: ${error.message}` 
+      }]);
+    }
     setIsLoading(false);
   };
 
-  const toggleTask = (id: string) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-  };
-
-  const handleQuickAddTask = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!quickTaskTitle.trim()) {
-      setIsQuickAddOpen(false);
-      return;
+  const clearMemory = () => {
+    if (confirm('למחוק את כל הזיכרון?')) {
+      memoryService.clearAll();
+      setMemoryCount(0);
+      alert('הזיכרון נמחק!');
     }
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: quickTaskTitle,
-      tier: TaskTier.TIER0,
-      completed: false
-    };
-    setTasks([newTask, ...tasks]);
-    setQuickTaskTitle('');
-    setIsQuickAddOpen(false);
-  };
-
-  const addMemory = () => {
-    if (!newMemoryFact.trim()) return;
-    const newMem: MemoryFact = { id: Date.now().toString(), fact: newMemoryFact, category: newMemoryCategory, timestamp: Date.now() };
-    setDnaMemories(prev => [newMem, ...prev]);
-    setNewMemoryFact('');
-  };
-
-  const addCategory = () => {
-    if (!newCatName.trim() || categories.includes(newCatName)) return;
-    setCategories([...categories, newCatName]);
-    setNewCatName('');
-    setIsAddingCategory(false);
-  };
-
-  const renameCategory = (oldName: string, newName: string) => {
-    if (!newName.trim() || oldName === newName) {
-      setEditingCategory(null);
-      return;
-    }
-    setCategories(prev => prev.map(c => c === oldName ? newName : c));
-    setDnaMemories(prev => prev.map(m => m.category === oldName ? { ...m, category: newName } : m));
-    if (newMemoryCategory === oldName) setNewMemoryCategory(newName);
-    setEditingCategory(null);
-  };
-
-  const mergeCategories = (source: string, target: string) => {
-    if (source === target) return;
-    setDnaMemories(prev => prev.map(m => m.category === source ? { ...m, category: target } : m));
-    setCategories(prev => prev.filter(c => c !== source));
-    if (newMemoryCategory === source) setNewMemoryCategory(target);
-    setEditingCategory(null);
-  };
-
-  const saveMemoryEdit = (id: string, newFact: string) => {
-    if (!newFact.trim()) {
-      setEditingMemoryId(null);
-      return;
-    }
-    setDnaMemories(prev => prev.map(m => m.id === id ? { ...m, fact: newFact, timestamp: Date.now() } : m));
-    setEditingMemoryId(null);
-  };
-
-  const deleteMemory = (id: string) => {
-    setDnaMemories(prev => prev.filter(m => m.id !== id));
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    console.log(`Searching in ${searchSource} for: ${searchQuery}`);
   };
 
   return (
-    <div className={`flex flex-col h-screen w-full transition-colors duration-500 overflow-hidden font-heebo ${isDarkMode ? 'bg-[#050507] text-white' : 'bg-[#f8f9fa] text-slate-900'}`} dir="rtl">
-      
-      {/* Header */}
-      <header className={`px-6 py-4 flex justify-between items-center backdrop-blur-xl border-b safe-pt z-40 ${isDarkMode ? 'bg-[#050507]/80 border-white/5' : 'bg-white/80 border-slate-200'}`}>
-        <div className="flex items-center gap-3 flex-1">
-          <div className={`w-10 h-10 rounded-full glass p-0.5 border overflow-hidden shrink-0 ${isDarkMode ? 'border-indigo-500/20' : 'border-indigo-500/40'}`}>
-            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Sharon&backgroundColor=b6e3f4`} className="w-full h-full rounded-full" />
-          </div>
-          <div className="text-right flex flex-col justify-center max-w-[120px]">
-            <h2 className="text-sm font-black tracking-tight truncate">{isDarkMode ? '׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ' : '׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ§׳³ֲ³ײ²ֲ¨ ׳³ֲ³ײ»ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֻ'}, ׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ</h2>
-            <p className={`text-[8px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>DNA SYNC: 100%</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+      <div className="container mx-auto max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-bold text-white mb-2">Nudge Me OS</h1>
+          <p className="text-xl text-gray-300">העוזר האישי של שרון</p>
           
-          {/* Header Search Bar */}
-          <div className={`relative flex items-center rounded-xl px-3 py-1.5 border transition-all max-w-[200px] flex-1 mr-2 ${isDarkMode ? 'bg-white/5 border-white/10 focus-within:border-indigo-500/50' : 'bg-slate-100 border-slate-200 focus-within:border-indigo-500/50'}`}>
-            <Search className="w-3.5 h-3.5 text-slate-500 ml-2" />
-            <input 
-              type="text" 
-              placeholder="׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ©..."
-              value={headerSearchQuery}
-              onChange={(e) => setHeaderSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs font-medium w-full"
-            />
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className={`p-2.5 rounded-xl glass transition-all ${isDarkMode ? 'text-amber-400 hover:bg-white/10' : 'text-indigo-600 hover:bg-slate-100'}`}>
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-                    <GoogleToolsMenu isDarkMode={isDarkMode} />
-          <button onClick={() => setIsHistoryOpen(true)} className={`p-2.5 rounded-xl glass active:scale-95 transition-transform ${isDarkMode ? 'text-slate-400 hover:bg-white/10' : 'text-slate-600 hover:bg-slate-100'}`}>
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main View */}
-      <main className="flex-1 overflow-y-auto no-scrollbar pb-28 px-4 py-4">
-        <AnimatePresence mode="wait">
-          
-          {/* HOME: UNIFIED AGENDA */}
-          {activeTab === 'home' && (
-            <motion.div key="home" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-              
-              {/* Tachles Search Widget */}
-              <div className={`glass rounded-[2rem] p-5 shadow-xl border ${isDarkMode ? 'border-white/5 bg-white/[0.02]' : 'border-slate-200 bg-white'}`}>
-                <div className="flex items-center justify-between mb-4">
-                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ© ׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֻ-׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ³ג€”׳³ֲ³׳’ג€ֲ¢</h3>
-                   <div className="flex gap-1.5">
-                      {[
-                        { id: 'chat', icon: <MessageSquare className="w-3.5 h-3.5" />, label: '׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”' },
-                        { id: 'mail', icon: <Mail className="w-3.5 h-3.5" />, label: '׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ' },
-                        { id: 'drive', icon: <HardDrive className="w-3.5 h-3.5" />, label: '׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֻ' },
-                        { id: 'calendar', icon: <CalendarIcon className="w-3.5 h-3.5" />, label: '׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ' }
-                      ].map(src => (
-                        <button 
-                          key={src.id} 
-                          onClick={() => setSearchSource(src.id as any)}
-                          className={`p-2 rounded-lg transition-all border ${searchSource === src.id ? 'bg-indigo-600 border-indigo-500 text-white' : isDarkMode ? 'bg-white/5 border-white/5 text-slate-400' : 'bg-slate-50 border-slate-100 text-slate-500'}`}
-                          title={src.label}
-                        >
-                          {src.icon}
-                        </button>
-                      ))}
-                   </div>
-                </div>
-                <form onSubmit={handleSearch} className={`relative flex items-center rounded-2xl px-4 py-3 border ${isDarkMode ? 'bg-black/20 border-white/5 focus-within:border-indigo-500/50' : 'bg-slate-50 border-slate-100 focus-within:border-indigo-500/50'}`}>
-                  <Search className="w-4 h-4 text-slate-500 ml-2" />
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={`׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ© ׳³ֲ³׳’ג‚¬ֻ${searchSource === 'chat' ? '׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”' : searchSource === 'mail' ? '׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ' : searchSource === 'drive' ? '׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֻ' : '׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ'}...`}
-                    className="flex-1 bg-transparent border-none outline-none text-sm font-medium placeholder-slate-400"
-                  />
-                  {searchQuery && <button type="submit" className="text-indigo-500 font-black text-[10px] uppercase">׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ©</button>}
-                </form>
-              </div>
-
-              {/* UNIFIED AGENDA INTERLEAVED VIEW */}
-              <div className={`glass rounded-[2.5rem] p-6 shadow-xl border ${isDarkMode ? 'border-white/5 bg-white/[0.02]' : 'border-slate-200 bg-white'}`}>
-                <div className="flex items-center justify-between mb-6">
-                   <div className="flex items-center gap-3">
-                     <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                       <Clock className="w-5 h-5" />
-                     </div>
-                     <h3 className="text-lg font-black">׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ג„¢'׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ</h3>
-                   </div>
-                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢ 20, 2025</span>
-                </div>
-
-                <div className="space-y-4 relative">
-                  {/* Timeline vertical line */}
-                  <div className={`absolute right-[7px] top-2 bottom-2 w-0.5 ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`} />
-                  
-                  {agendaItems.map((item) => (
-                    <div key={item.id} className="relative flex items-center gap-6 pr-6 group">
-                      {/* Timeline status dot */}
-                      <div className={`absolute right-0 w-3.5 h-3.5 rounded-full border-2 transition-transform group-hover:scale-125 z-10 ${
-                        item.type === 'task' 
-                        ? (item.overdue ? 'bg-rose-500 border-rose-200' : `${getTierColor(item.tier as TaskTier)} border-white/20`) 
-                        : `${(item as any).color} border-white/20`
-                      } ${item.isUpcoming ? 'ring-4 ring-indigo-500/20' : ''}`} />
-                      
-                      <span className={`text-[10px] font-bold min-w-[40px] ${item.isUpcoming ? 'text-indigo-400' : 'text-slate-500'}`}>
-                        {item.time}
-                      </span>
-                      
-                      <div className={`flex-1 p-4 rounded-2xl border transition-all ${
-                        item.isUpcoming 
-                          ? (isDarkMode ? 'bg-indigo-600/10 border-indigo-500/30 shadow-[0_0_20px_rgba(79,70,229,0.1)]' : 'bg-indigo-50 border-indigo-200 shadow-sm')
-                          : (isDarkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-slate-50 border-slate-100 hover:border-indigo-100')
-                      }`}>
-                        <div className="flex items-center justify-between gap-3">
-                           <div className="flex flex-col gap-1 min-w-0">
-                             <div className="flex items-center gap-2">
-                               {item.isUpcoming && <span className="text-[8px] font-black uppercase text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded">׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢</span>}
-                               <p className={`text-sm font-bold truncate ${item.isUpcoming ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>{item.title}</p>
-                             </div>
-                             {item.type === 'task' && (
-                               <div className="flex items-center gap-2">
-                                  <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md text-white ${getTierColor(item.tier as TaskTier)}`}>
-                                    {getTierLabel(item.tier as TaskTier)}
-                                  </span>
-                                  {item.overdue && <span className="text-[8px] font-bold text-rose-500 uppercase">׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¨</span>}
-                               </div>
-                             )}
-                           </div>
-                           
-                           <div className={`p-2 rounded-xl shrink-0 ${
-                             item.type === 'event' 
-                               ? (isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-600') 
-                               : (isDarkMode ? 'bg-white/5 text-slate-500' : 'bg-white text-slate-400')
-                           }`}>
-                             {item.type === 'event' ? <CalendarIcon className="w-4 h-4" /> : <ListTodo className="w-4 h-4" />}
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {agendaItems.length === 0 && (
-                    <div className="text-center py-10 space-y-3 opacity-40">
-                      <LayoutGrid className="w-10 h-10 mx-auto text-slate-500" />
-                      <p className="italic text-xs">׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€” ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ. ׳³ֲ³׳’ג‚¬ג€׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ג€?</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Proactive Nudge Card */}
-              <div className={`w-full rounded-[2.5rem] p-6 space-y-4 shadow-2xl relative overflow-hidden border ${isDarkMode ? 'glass border-indigo-500/10 bg-indigo-500/[0.04]' : 'bg-indigo-50 border-indigo-100'}`}>
-                <div className="absolute top-0 left-0 p-6 opacity-5">
-                   <Zap className="w-24 h-24 text-indigo-400" />
-                </div>
-                <div className={`flex items-center gap-2 relative z-10 ${isDarkMode ? 'text-amber-400' : 'text-indigo-600'}`}>
-                  <Sparkles className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-wider">Synapse Proactive</span>
-                </div>
-                <p className={`text-md leading-relaxed font-bold relative z-10 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-                  ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ³ג€”׳³ֲ³׳’ג€ֲ¢ ׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ¨ ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֻ-13:00. ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ³ג€”׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ, ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ§׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֻ"׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ»ֲ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ§׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ³ג€”"? (׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ׳³ֲ³ײ³ג€”׳³ֲ³׳’ג€ֲ¢ ׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ).
-                </p>
-                <div className="flex gap-2 relative z-10">
-                  <button className="flex-1 py-3.5 rounded-2xl bg-indigo-600 text-white text-xs font-black shadow-lg active:scale-95 transition-all">׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ²ֲ¦׳³ֲ³ײ²ֲ¢ ׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¡</button>
-                  <button className={`flex-1 py-3.5 rounded-2xl border text-xs font-bold active:scale-95 transition-all ${isDarkMode ? 'glass border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}>׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ג„¢</button>
-                </div>
-              </div>
-
-            </motion.div>
-          )}
-
-          {/* TASKS VIEW */}
-          {activeTab === 'tasks' && (
-            <motion.div key="tasks" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-              <div className="flex items-center justify-between px-2">
-                <div className="space-y-1">
-                   <h3 className="text-3xl font-black">׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”</h3>
-                   <p className="text-slate-500 text-xs">{tasks.filter(t => !t.completed).length} ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ»ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֳ—׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ '׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¡'</p>
-                </div>
-                <button 
-                  onClick={() => setIsQuickAddOpen(!isQuickAddOpen)}
-                  className={`w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-xl flex items-center justify-center active:scale-90 transition-transform`}
-                >
-                  <Plus className={`w-6 h-6 transition-transform ${isQuickAddOpen ? 'rotate-45' : ''}`} />
-                </button>
-              </div>
-
-              {/* Quick Add Input */}
-              <AnimatePresence>
-                {isQuickAddOpen && (
-                  <motion.form 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    onSubmit={handleQuickAddTask}
-                    className={`glass p-4 rounded-[1.8rem] border flex items-center gap-2 ${isDarkMode ? 'border-white/10' : 'border-slate-200 bg-white'}`}
-                  >
-                    <input 
-                      autoFocus
-                      type="text" 
-                      placeholder="׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¡׳³ֲ³ײ²ֲ£ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ '׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¡'..." 
-                      value={quickTaskTitle}
-                      onChange={(e) => setQuickTaskTitle(e.target.value)}
-                      className="flex-1 bg-transparent border-none outline-none text-sm font-bold"
-                    />
-                    <button type="submit" className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg active:scale-95 transition-all">
-                      <Check className="w-5 h-5" />
-                    </button>
-                  </motion.form>
-                )}
-              </AnimatePresence>
-
-              <div className="space-y-4">
-                {tasks.map(task => {
-                  const overdue = isOverdue(task.deadline) && !task.completed;
-                  return (
-                    <motion.div 
-                      layout
-                      key={task.id} 
-                      className={`glass rounded-[1.8rem] flex items-stretch border transition-all active:scale-[0.98] overflow-hidden ${
-                        isDarkMode ? 'border-white/5' : 'border-slate-200 bg-white shadow-sm'
-                      }`}
-                      onClick={() => toggleTask(task.id)}
-                    >
-                      {/* Priority Indicator strip */}
-                      <div className={`w-2 shrink-0 ${getTierColor(task.tier)}`} />
-                      
-                      <div className="flex-1 flex items-center justify-between p-5 pr-4">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
-                            task.completed ? 'bg-emerald-500 border-emerald-500' : 'border-indigo-500/30'
-                          }`}>
-                            {task.completed && <Check className="w-4 h-4 text-white" />}
-                          </div>
-                          <div className="space-y-1">
-                            <span className={`text-sm font-bold block ${task.completed ? 'line-through opacity-40' : ''}`}>
-                              {task.title}
-                            </span>
-                            <div className="flex flex-wrap items-center gap-2">
-                               <span className={`text-[9px] px-2 py-0.5 rounded-lg text-white font-black uppercase ${getTierColor(task.tier)}`}>
-                                 {getTierLabel(task.tier)}
-                               </span>
-                               {task.deadline && (
-                                 <div className={`flex items-center gap-1.5 text-[10px] font-bold ${overdue ? 'text-rose-500' : 'text-slate-500'}`}>
-                                   <Clock className="w-3.5 h-3.5" />
-                                   <span>{task.deadline.replace('T', ' ')}</span>
-                                   {overdue && (
-                                     <motion.div 
-                                       animate={{ scale: [1, 1.1, 1] }} 
-                                       transition={{ repeat: Infinity, duration: 2 }}
-                                       className="flex items-center gap-1 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20"
-                                     >
-                                       <AlertCircle className="w-3 h-3" />
-                                       <span className="text-[8px] font-black uppercase tracking-tighter">׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ²ֲ¨ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ</span>
-                                     </motion.div>
-                                   )}
-                                 </div>
-                               )}
-                            </div>
-                          </div>
-                        </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setTasks(tasks.filter(t => t.id !== task.id)); }} 
-                          className={`p-3 transition-colors ${isDarkMode ? 'text-white/10 hover:text-rose-500' : 'text-slate-200 hover:text-rose-500'}`}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* DNA MEMORY VIEW */}
-          {activeTab === 'dna' && (
-            <motion.div key="dna" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-              <div className="flex items-center justify-between px-2">
-                <div className="space-y-1">
-                   <h3 className="text-3xl font-black">DNA Memory</h3>
-                   <p className="text-slate-500 text-xs">׳³ֲ³ײ²ֲ¡׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ§׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ»ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג€ֲ¢ ׳³ֲ³׳’ג€ֳ—׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ</p>
-                </div>
-                <Brain className={`w-10 h-10 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} opacity-20`} />
-              </div>
-
-              {/* Add Entry Card */}
-              <div className={`glass rounded-[2rem] p-6 border space-y-4 shadow-xl ${isDarkMode ? 'border-white/5 bg-white/[0.02]' : 'border-slate-200 bg-white'}`}>
-                 <div className="flex gap-2">
-                   <select 
-                     value={newMemoryCategory} 
-                     onChange={(e) => setNewMemoryCategory(e.target.value)}
-                     className={`rounded-xl px-3 py-2 text-xs font-bold border-none outline-none focus:ring-1 focus:ring-indigo-500 flex-shrink-0 ${isDarkMode ? 'bg-white/5' : 'bg-slate-50 text-slate-800'}`}
-                   >
-                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                   </select>
-                   <input 
-                     type="text" 
-                     placeholder="׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¡׳³ֲ³ײ²ֲ£ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¢ ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ© ׳³ֲ³ײ²ֲ-DNA..."
-                     value={newMemoryFact}
-                     onChange={(e) => setNewMemoryFact(e.target.value)}
-                     className={`flex-1 rounded-xl px-4 py-2 text-xs font-medium border-none outline-none focus:ring-1 focus:ring-indigo-500 ${isDarkMode ? 'bg-white/5' : 'bg-slate-50 text-slate-800'}`}
-                   />
-                 </div>
-                 
-                 <div className="flex gap-2 items-center">
-                    {isAddingCategory ? (
-                      <div className="flex-1 flex gap-2">
-                        <input autoFocus type="text" placeholder="׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ§׳³ֲ³ײ»ֲ׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ..." value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
-                          className={`flex-1 rounded-xl px-4 py-2 text-xs font-medium border-none outline-none focus:ring-1 focus:ring-indigo-500 ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}
-                        />
-                        <button onClick={addCategory} className="p-2 bg-emerald-500 text-white rounded-xl"><Check className="w-5 h-5" /></button>
-                        <button onClick={() => setIsAddingCategory(false)} className="p-2 bg-rose-500 text-white rounded-xl"><X className="w-5 h-5" /></button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setIsAddingCategory(true)} className={`px-4 py-2 rounded-xl text-[10px] font-black border transition-all ${isDarkMode ? 'border-white/10 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                        + ׳³ֲ³ײ²ֲ§׳³ֲ³ײ»ֲ׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ
-                      </button>
-                    )}
-                    <button onClick={addMemory} className="flex-1 py-3 bg-indigo-600 rounded-xl text-xs font-black text-white shadow-lg active:scale-95 transition-all">
-                      ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¡׳³ֲ³ײ²ֲ£ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ
-                    </button>
-                 </div>
-              </div>
-
-              {/* Memory List */}
-              <div className="space-y-10">
-                 {categories.map(cat => {
-                   const items = dnaMemories.filter(m => m.category === cat);
-                   return (
-                     <div key={cat} className="space-y-3">
-                       <div className="flex items-center justify-between px-2">
-                        {editingCategory === cat ? (
-                          <div className="flex items-center gap-2">
-                            <input 
-                              autoFocus
-                              className={`text-[10px] font-black uppercase tracking-widest bg-transparent border-b border-indigo-500 outline-none ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
-                              defaultValue={cat}
-                              onBlur={(e) => renameCategory(cat, e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && renameCategory(cat, (e.target as HTMLInputElement).value)}
-                            />
-                            <Check className="w-3 h-3 text-emerald-500" />
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group">
-                            <h4 className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{cat}</h4>
-                            <button onClick={() => setEditingCategory(cat)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Edit2 className="w-3 h-3 text-slate-500" /></button>
-                            <div className="relative group/merge">
-                              <button className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Merge className="w-3 h-3 text-slate-500" /></button>
-                              <div className="absolute right-0 top-full hidden group-hover/merge:block z-10 glass rounded-lg p-2 min-w-[120px] shadow-xl border border-white/10">
-                                <p className="text-[8px] font-black uppercase mb-1 opacity-50">׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ג„¢ ׳³ֲ³ײ²ֲ¢׳³ֲ³ײ²ֲ...</p>
-                                {categories.filter(c => c !== cat).map(c => (
-                                  <button key={c} onClick={() => mergeCategories(cat, c)} className="w-full text-right py-1 px-2 text-[9px] font-bold hover:bg-white/5 rounded transition-colors">{c}</button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        <span className={`text-[10px] opacity-40 font-bold`}>{items.length} ׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”</span>
-                       </div>
-                       
-                       <Reorder.Group axis="y" values={items} onReorder={(newOrder) => {
-                          const others = dnaMemories.filter(m => m.category !== cat);
-                          setDnaMemories([...others, ...newOrder]);
-                       }} className="space-y-3">
-                         {items.map(mem => (
-                           <Reorder.Item key={mem.id} value={mem} className={`glass p-5 rounded-[1.8rem] border flex items-center justify-between gap-4 group active:scale-[0.98] ${isDarkMode ? 'border-white/5 bg-white/[0.02]' : 'border-slate-200 bg-white shadow-sm'}`}>
-                             <div className="flex items-center gap-4 flex-1">
-                                <GripVertical className="w-4 h-4 text-slate-600 shrink-0 cursor-grab active:cursor-grabbing" />
-                                {editingMemoryId === mem.id ? (
-                                  <textarea 
-                                    autoFocus
-                                    className={`flex-1 rounded-xl p-3 text-xs font-medium border-indigo-500/50 outline-none resize-none ${isDarkMode ? 'bg-black/20 text-white' : 'bg-slate-50 text-slate-800'}`}
-                                    defaultValue={mem.fact}
-                                    onBlur={(e) => saveMemoryEdit(mem.id, e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && saveMemoryEdit(mem.id, (e.target as HTMLTextAreaElement).value)}
-                                  />
-                                ) : (
-                                  <p className={`text-xs font-medium leading-relaxed ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{mem.fact}</p>
-                                )}
-                             </div>
-                             {!editingMemoryId && (
-                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button onClick={() => setEditingMemoryId(mem.id)} className="p-2 glass rounded-lg text-slate-500 hover:text-indigo-500"><Edit2 className="w-4 h-4" /></button>
-                                 <button onClick={() => deleteMemory(mem.id)} className="p-2 glass rounded-lg text-rose-500/40 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
-                               </div>
-                             )}
-                           </Reorder.Item>
-                         ))}
-                       </Reorder.Group>
-
-      {/* Voice Conversation Mode */}
-      {isVoiceMode && (
-        <VoiceConversationMode
-          onClose={() => setIsVoiceMode(false)}
-          onMessage={async (text) => {
-            setInputText(text);
-            await handleSendMessage();
-            // Return the AI response
-            return activeChat?.messages[activeChat.messages.length - 1]?.content || '';
-          }}
-          isDarkMode={isDarkMode}
-        />
-      )}
-                     </div>
-                   );
-                 })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* CHAT VIEW */}
-          {activeTab === 'chat' && (
-            <motion.div key="chat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col h-full">
-               <div className="flex-1 overflow-y-auto space-y-6 pb-24 no-scrollbar">
-                {activeChat?.messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-24 text-center space-y-6">
-                    <div className={`w-20 h-20 rounded-full flex items-center justify-center border ${isDarkMode ? 'bg-indigo-600/5 border-indigo-500/10' : 'bg-indigo-50 border-indigo-100'}`}><MessageSquare className="w-10 h-10 text-indigo-400" /></div>
-                    <div className="space-y-2">
-                       <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢"׳³ֲ³׳’ג‚¬ג€ ׳³ֲ³ײ²ֲ©׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ?</h3>
-                       <p className="text-slate-500 text-xs px-10 italic">׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢ ׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¡׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ¨ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³ײ³ג€” ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”.</p>
-                    </div>
-                  </div>
-                )}
-                {activeChat?.messages.map((msg) => (
-                  <div key={msg.id} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[88%] p-5 rounded-[2rem] shadow-xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : isDarkMode ? 'glass border border-white/10 rounded-tl-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'}`}>
-                      {msg.content}
-                    </div>
-                    <span className="text-[10px] text-slate-500 mt-1 px-3 font-medium opacity-60">
-                      {formatTime(msg.timestamp)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="fixed bottom-24 left-4 right-4 z-40">
-                <div className={`glass rounded-full p-1.5 flex items-center gap-1 border shadow-2xl backdrop-blur-3xl ${isDarkMode ? 'border-white/10 bg-black/40' : 'border-slate-200 bg-white/80'}`}>
-                  <button className="p-4 rounded-full text-slate-500"><Paperclip className="w-5 h-5" /></button>
-                  <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³׳’ג‚¬ֻ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג‚¬ֲ¢..." className="flex-1 bg-transparent border-none outline-none px-2 text-sm font-medium placeholder-slate-400 text-right" />
-                  <VoiceButton onTranscript={(text) => { setInputText(text); }} />
-                  <button onClick={handleSendMessage} className={`p-4 rounded-full transition-all ${inputText.trim() ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300'}`}><Send className="w-5 h-5" /></button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* CALENDAR VIEW */}
-          {activeTab === 'calendar' && (
-            <motion.div key="calendar" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-               <div className="flex items-center justify-between px-2">
-                <div className="space-y-1">
-                   <h3 className="text-3xl font-black">׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ</h3>
-                   <p className="text-slate-500 text-xs">׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³׳’ג€ֲ¢ 2025</p>
-                </div>
-                <button className="p-3 rounded-2xl glass"><Plus className="w-5 h-5" /></button>
-              </div>
-              <div className={`glass rounded-[2rem] p-6 border ${isDarkMode ? 'border-white/5' : 'border-slate-200 bg-white'}`}>
-                <div className="grid grid-cols-7 gap-1 mb-8">
-                   {['׳³ֲ³ײ²ֲ','׳³ֲ³׳’ג‚¬ֻ','׳³ֲ³׳’ג‚¬ג„¢','׳³ֲ³׳’ג‚¬ֲ','׳³ֲ³׳’ג‚¬ֲ','׳³ֲ³׳’ג‚¬ֲ¢','׳³ֲ³ײ²ֲ©'].map(d => <div key={d} className="text-center text-[10px] font-black text-slate-600">{d}</div>)}
-                   {Array.from({length: 31}).map((_, i) => (
-                     <div key={i} className={`aspect-square rounded-xl flex items-center justify-center text-xs font-bold transition-all ${i+1 === 20 ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-white/5 text-slate-500'}`}>
-                       {i+1}
-                     </div>
-                   ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-
-      {/* Bottom Navigation */}
-      <nav className={`fixed bottom-0 left-0 right-0 glass border-t safe-pb z-50 transition-colors duration-500 ${isDarkMode ? 'border-white/5 bg-[#050507]/60' : 'border-slate-200 bg-white/80'}`}>
-        <div className="flex justify-around items-center py-3 px-2">
-          <NavButton active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home className="w-5 h-5" />} label="׳³ֲ³׳’ג‚¬ֻ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ³ג€”" isDarkMode={isDarkMode} />
-          <NavButton active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} icon={<MessageSquare className="w-5 h-5" />} label="׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ" isDarkMode={isDarkMode} />
-          <NavButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<Zap className="w-5 h-5" />} label="׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ³ג€”" isDarkMode={isDarkMode} />
-          <NavButton active={activeTab === 'calendar'} onClick={() => setActiveTab('calendar')} icon={<CalendarIcon className="w-5 h-5" />} label="׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ" isDarkMode={isDarkMode} />
-          <NavButton active={activeTab === 'dna'} onClick={() => setActiveTab('dna')} icon={<User className="w-5 h-5" />} label="DNA" isDarkMode={isDarkMode} />
-        </div>
-      </nav>
-
-      {/* History Side Drawer */}
-      <AnimatePresence>
-        {isHistoryOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsHistoryOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" />
-            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className={`fixed right-0 top-0 bottom-0 w-[82%] z-[101] shadow-2xl border-l flex flex-col p-6 space-y-6 ${isDarkMode ? 'bg-[#0a0a0c] border-white/10' : 'bg-white border-slate-200'}`}>
-              <div className="flex items-center justify-between">
-                <h2 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>׳³ֲ³׳’ג‚¬ֲ׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ¡׳³ֲ³ײ»ֲ׳³ֲ³׳’ג‚¬ֲ¢׳³ֲ³ײ²ֲ¨׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ</h2>
-                <button onClick={() => setIsHistoryOpen(false)} className="p-2 glass rounded-full"><X className="w-5 h-5" /></button>
-              </div>
-              <button onClick={startNewChat} className="flex items-center justify-between bg-indigo-600 p-5 rounded-2xl text-white font-black shadow-lg active:scale-95 transition-all">
-                <span>׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֲ</span>
-                <Edit2 className="w-5 h-5" />
+          {/* Memory Counter */}
+          <div className="flex items-center justify-center gap-4 mt-4">
+            <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-xl border border-purple-500/30">
+              <Brain className="w-5 h-5 text-purple-400" />
+              <span className="text-white text-sm">{memoryCount} זיכרונות</span>
+            </div>
+            
+            {memoryCount > 0 && (
+              <button
+                onClick={clearMemory}
+                className="px-4 py-2 bg-red-500/20 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/30 transition-colors flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                מחק זיכרון
               </button>
-              <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar">
-                {chats.map(chat => (
-                  <button key={chat.id} onClick={() => { setActiveChatId(chat.id); setActiveTab('chat'); setIsHistoryOpen(false); }} className={`w-full p-4 rounded-2xl text-right transition-all flex items-center justify-between border ${activeChatId === chat.id ? 'bg-indigo-600/10 border-indigo-500/20 text-indigo-400' : isDarkMode ? 'glass border-transparent text-slate-400' : 'bg-slate-50 border-transparent text-slate-600'}`}>
-                    <span className="truncate text-xs font-bold">{chat.title}</span>
-                    <MessageSquare className="w-4 h-4 opacity-30" />
-                  </button>
-                ))}
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+            )}
+          </div>
+        </div>
 
-      {/* Voice Assistant Overlay */}
-      <AnimatePresence>
-        {isLiveVoiceMode && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] glass flex flex-col items-center justify-center bg-black/95 backdrop-blur-3xl p-10">
-            <button onClick={() => setIsLiveVoiceMode(false)} className="absolute top-10 left-10 p-4 glass rounded-full text-white"><X className="w-6 h-6" /></button>
-            <div className="relative">
-              <div className="w-60 h-60 rounded-full bg-indigo-600/10 flex items-center justify-center border border-indigo-500/20 animate-pulse relative z-10">
-                <Mic className="w-20 h-20 text-indigo-400" />
+        {/* Chat Box */}
+        <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 h-[calc(100vh-240px)] flex flex-col">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4" dir="rtl">
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <div className="text-5xl mb-4">👋</div>
+                  <p className="text-lg font-semibold mb-2">היי שרון! אני נאדג׳</p>
+                  <p className="text-sm">שאלי אותי כל דבר - אני זוכר הכל! 🧠</p>
+                </div>
               </div>
-              <div className="absolute -inset-6 rounded-full border border-indigo-500/10 animate-ping opacity-20" />
-            </div>
-            <div className="mt-14 text-center space-y-3">
-              <h2 className="text-4xl font-black tracking-tight text-white">Synapse Live</h2>
-              <p className="text-indigo-400 font-bold uppercase tracking-widest text-[10px] animate-pulse">׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ - ׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ג„¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³ײ²ֲ׳³ֲ³׳’ג‚¬ֲ ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג‚¬ֻ׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ '׳³ֲ³ײ³ג€”׳³ֲ³׳’ג‚¬ֳ·׳³ֲ³ײ²ֲ׳³ֲ³ײ²ֲ¡'</p>
-            </div>
-            <button onClick={() => setIsLiveVoiceMode(false)} className="mt-20 w-full py-5 rounded-[2.5rem] bg-rose-600 text-white font-black text-xl shadow-xl shadow-rose-600/30 active:scale-95 transition-all">׳³ֲ³ײ²ֲ¡׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג€ֲ¢׳³ֲ³ײ²ֲ ׳³ֲ³ײ²ֲ©׳³ֲ³׳’ג€ֲ¢׳³ֲ³׳’ג‚¬ג€׳³ֲ³׳’ג‚¬ֲ</button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            ) : (
+              messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`max-w-[80%] p-4 rounded-2xl ${
+                    msg.role === 'user'
+                      ? 'bg-emerald-500/20 border border-emerald-500/30'
+                      : 'bg-slate-800/50 border border-slate-700/50'
+                  }`}>
+                    <p className="text-white whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                </div>
+              ))
+            )}
+            {isLoading && (
+              <div className="flex justify-end">
+                <div className="bg-slate-800/50 p-4 rounded-2xl">
+                  <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
+                </div>
+              </div>
+            )}
+          </div>
 
-      {/* Voice Conversation Mode */}
-      {isVoiceMode && (
-        <VoiceConversationMode
-          onClose={() => setIsVoiceMode(false)}
-          onMessage={async (text) => {
-            setInputText(text);
-            await handleSendMessage();
-            // Return the AI response
-            return activeChat?.messages[activeChat.messages.length - 1]?.content || '';
-          }}
-          isDarkMode={isDarkMode}
-        />
-      )}
+          {/* Input */}
+          <div className="p-4 border-t border-slate-700/50">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="הקלידי הודעה או דברי..."
+                disabled={isLoading}
+                dir="rtl"
+                className="flex-1 px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none"
+              />
+              
+              <VoiceInput 
+                onTranscript={(text) => handleSend(text)}
+                disabled={isLoading}
+              />
+              
+              <button
+                onClick={() => handleSend()}
+                disabled={isLoading || !input.trim()}
+                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl font-bold text-white hover:from-emerald-600 hover:to-blue-600 disabled:opacity-50"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
-
-const NavButton = ({ active, onClick, icon, label, isDarkMode }: { active: boolean, onClick: () => void, icon: any, label: string, isDarkMode: boolean }) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all px-3 py-1.5 rounded-2xl ${active ? 'text-indigo-500' : 'text-slate-500'}`}>
-    <div className={`p-2 rounded-xl transition-all ${active ? (isDarkMode ? 'bg-indigo-500/10 shadow-[0_0_15px_rgba(79,70,229,0.2)] scale-110' : 'bg-indigo-50 scale-110 shadow-sm') : ''}`}>{icon}</div>
-    <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
-  </button>
-);
-
+}
 
 export default App;
-

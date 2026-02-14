@@ -1,0 +1,126 @@
+import { useEffect, useState } from 'react';
+import { Send, Loader2 } from 'lucide-react';
+import { geminiService } from './services/geminiService';
+import { proactiveEngine } from './services/proactiveEngine';
+
+function App() {
+  const [messages, setMessages] = useState<Array<{role: string; content: string}>>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    console.log('🚀 מפעיל ProactiveEngine...');
+    proactiveEngine.start();
+    return () => proactiveEngine.stop();
+  }, []);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+    
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setIsLoading(true);
+    
+    try {
+      const response = await geminiService.chat(userMsg);
+      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error: any) {
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `❌ שגיאה: ${error.message}` 
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-3 sm:p-4">
+      <div className="container mx-auto max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-4 sm:mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-1 sm:mb-2">
+            Nudge Me OS
+          </h1>
+          <p className="text-base sm:text-lg md:text-xl text-gray-300">
+            AI Life Operating System
+          </p>
+        </div>
+
+        {/* Chat Box - Mobile Optimized */}
+        <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 h-[calc(100vh-140px)] sm:h-[calc(100vh-180px)] flex flex-col">
+          
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4" style={{ direction: 'rtl' }}>
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center px-4">
+                  <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">👋</div>
+                  <p className="text-base sm:text-lg font-semibold mb-2">היי! אני נאדג׳, העוזר האישי שלך</p>
+                  <p className="text-sm sm:text-base">שאל אותי כל דבר!</p>
+                </div>
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <div 
+                  key={i} 
+                  className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                >
+                  <div 
+                    className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-2xl ${
+                      msg.role === 'user'
+                        ? 'bg-emerald-500/20 border border-emerald-500/30'
+                        : 'bg-slate-800/50 border border-slate-700/50'
+                    }`}
+                  >
+                    <p className="text-white whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
+                      {msg.content}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+            
+            {isLoading && (
+              <div className="flex justify-end">
+                <div className="bg-slate-800/50 border border-slate-700/50 p-3 sm:p-4 rounded-2xl">
+                  <Loader2 className="w-5 h-5 animate-spin text-emerald-400" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input Area - Mobile Optimized */}
+          <div className="p-3 sm:p-4 border-t border-slate-700/50">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder="הקלד הודעה..."
+                disabled={isLoading}
+                className="flex-1 px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-gray-400 focus:border-emerald-500 focus:outline-none disabled:opacity-50 touch-manipulation"
+                style={{ direction: 'rtl' }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={isLoading || !input.trim()}
+                className="px-4 py-2 sm:px-6 sm:py-3 min-w-[56px] sm:min-w-[64px] bg-gradient-to-r from-emerald-500 to-blue-500 rounded-xl font-bold text-white hover:from-emerald-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center touch-manipulation"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;

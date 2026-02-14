@@ -1,0 +1,241 @@
+Folder PATH listing for volume Windows-SSD
+Volume serial number is 7834-B5BE
+C:.
+|   .env
+|   .env.example
+|   .env.local
+|   .gitignore
+|   App.tsx
+|   App.tsx.backup
+|   App.tsx.before-fix
+|   App.tsx.before-google
+|   App.tsx.before-voice
+|   App.tsx.broken-2105
+|   constants.tsx
+|   folder_structure.txt
+|   geminiService.ts
+|   geminiService.ts.backup
+|   GOOGLE_IFRAME_SOLUTION.txt
+|   GOOGLE_TOOLS_GUIDE.txt
+|   index.html
+|   index.tsx
+|   INTEGRATION_GUIDE.txt
+|   metadata.json
+|   package-lock.json
+|   package.json
+|   README.md
+|   tsconfig.json
+|   types.ts
+|   vite.config.ts
+|   VoiceConversationMode.tsx
+|   VOICE_INTEGRATION_GUIDE.txt
+|   
++---backup_before_sprint_20260214_180742
+|   |   index.html
+|   |   package.json
+|   |   tsconfig.json
+|   |   vite.config.ts
+|   |   
+|   \---src
+|       |   App.tsx
+|       |   index.css
+|       |   main.tsx
+|       |   
+|       +---components
+|       |   +---Accessibility
+|       |   |       AccessibilityFeatures.tsx
+|       |   |       
+|       |   +---Chat
+|       |   |       SessionsList.tsx
+|       |   |       SmartSuggestions.tsx
+|       |   |       StreamingMessage.tsx
+|       |   |       
+|       |   +---Input
+|       |   |       MultiModalInput.tsx
+|       |   |       
+|       |   +---Language
+|       |   |       LanguageSwitcher.tsx
+|       |   |       
+|       |   +---Notifications
+|       |   |       NotificationSystem.tsx
+|       |   |       
+|       |   +---Offline
+|       |   |       OfflineMode.tsx
+|       |   |       
+|       |   +---Performance
+|       |   |       LazyLoad.tsx
+|       |   |       PerformanceMonitor.tsx
+|       |   |       
+|       |   +---QuickActions
+|       |   |       QuickActions.tsx
+|       |   |       
+|       |   +---Theme
+|       |   |       ThemeCustomizer.tsx
+|       |   |       
+|       |   \---Voice
+|       |           VoiceConversationMode.tsx
+|       |           VoiceFeedback.tsx
+|       |           VoicePersonalization.tsx
+|       |           VoiceWaveform.tsx
+|       |           
+|       +---contexts
+|       |       ConversationContext.tsx
+|       |       
+|       +---hooks
+|       |       useKeyboardShortcuts.ts
+|       |       usePerformance.ts
+|       |       useVoiceSettings.ts
+|       |       
+|       +---i18n
+|       |       config.ts
+|       |       
+|       +---locales
+|       |   +---ar
+|       |   |       translation.json
+|       |   |       
+|       |   +---en
+|       |   |       translation.json
+|       |   |       
+|       |   \---he
+|       |           translation.json
+|       |           
+|       +---services
+|       |       geminiService.ts
+|       |       
+|       +---styles
+|       |       animations.css
+|       |       
+|       \---utils
+|               exportConversation.ts
+|               
++---components
+|   +---DNA
+|   \---VoiceChat
++---DNA
+|       DNAButton.jsx
+|       
++---GoogleTools
+|       CalendarWidget.jsx
+|       GmailWidget.jsx
+|       GoogleAuth.js
+|       GoogleToolsMenu.jsx
+|       
++---node_modules
++---public
+|       service-worker.js
+|       
++---services
+|       memoryContext.js
+|       memoryService.ts
+|       
++---src
+|   |   App.tsx
+|   |   index.css
+|   |   main.tsx
+|   |   
+|   +---components
+|   |   |   VoiceInput.tsx
+|   |   |   
+|   |   +---Accessibility
+|   |   |       AccessibilityFeatures.tsx
+|   |   |       
+|   |   +---AI
+|   |   |       StreamingResponse.tsx
+|   |   |       
+|   |   +---Chat
+|   |   |       ChatInterface.tsx
+|   |   |       ChatInterface.tsx.backup
+|   |   |       MessageBubble.tsx
+|   |   |       SessionsList.tsx
+|   |   |       SmartSuggestions.tsx
+|   |   |       StreamingMessage.tsx
+|   |   |       TypingIndicator.tsx
+|   |   |       
+|   |   +---DNA
+|   |   +---Error
+|   |   +---GoogleTools
+|   |   +---Input
+|   |   |       MultiModalInput.tsx
+|   |   |       
+|   |   +---Language
+|   |   |       LanguageSwitcher.tsx
+|   |   |       
+|   |   +---Layout
+|   |   |       Header.tsx
+|   |   |       
+|   |   +---Mobile
+|   |   +---Notifications
+|   |   |       NotificationSystem.tsx
+|   |   |       
+|   |   +---Offline
+|   |   |       OfflineMode.tsx
+|   |   |       
+|   |   +---Performance
+|   |   |       LazyLoad.tsx
+|   |   |       PerformanceMonitor.tsx
+|   |   |       
+|   |   +---Proactive
+|   |   |       ProactiveNotifications.tsx
+|   |   |       ProactiveSettings.tsx
+|   |   |       
+|   |   +---QuickActions
+|   |   |       QuickActions.tsx
+|   |   |       
+|   |   +---Settings
+|   |   +---Theme
+|   |   |       ThemeCustomizer.tsx
+|   |   |       
+|   |   +---UI
+|   |   |       AccessibilityFeatures.tsx
+|   |   |       FontSizeControl.tsx
+|   |   |       GlassPanel.tsx
+|   |   |       KeyboardShortcuts.tsx
+|   |   |       ThemeToggle.tsx
+|   |   |       
+|   |   \---Voice
+|   |           VoiceConversationMode.tsx
+|   |           VoiceFeedback.tsx
+|   |           VoicePersonalization.tsx
+|   |           VoiceWaveform.tsx
+|   |           
+|   +---config
+|   +---contexts
+|   |       ConversationContext.tsx
+|   |       
+|   +---hooks
+|   |       useKeyboardShortcuts.ts
+|   |       usePerformance.ts
+|   |       useVoiceSettings.ts
+|   |       
+|   +---i18n
+|   |       config.ts
+|   |       
+|   +---locales
+|   |   +---ar
+|   |   |       translation.json
+|   |   |       
+|   |   +---en
+|   |   |       translation.json
+|   |   |       
+|   |   \---he
+|   |           translation.json
+|   |           
+|   +---services
+|   |       functionTools.ts
+|   |       geminiService.ts
+|   |       geminiService.ts.backup
+|   |       memoryService.ts
+|   |       proactiveEngine.ts
+|   |       voiceCommandsParser.ts
+|   |       
+|   +---styles
+|   |       animations.css
+|   |       
+|   +---types
+|   \---utils
+|           exportConversation.ts
+|           
+\---VoiceChat
+        VoiceButton.jsx
+        VoiceConversationMode.jsx
+        
