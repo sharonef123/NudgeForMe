@@ -117,7 +117,7 @@ const ChatInterface = ({ isDarkMode = true, pendingSuggestion, onSuggestionUsed 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-6 pb-8">
             <div className="text-center">
