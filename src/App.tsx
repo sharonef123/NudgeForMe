@@ -79,7 +79,7 @@ function AppInner({ isDarkMode, setIsDarkMode }: {
 
         {showGoogleTools && (
           <div className="relative z-10 w-80 flex-shrink-0 border-r border-white/10">
-            <GoogleToolsPanel isDarkMode={isDarkMode} />
+            <GoogleToolsPanel isDarkMode={isDarkMode} onClose={() => setShowGoogleTools(false)} />
           </div>
         )}
       </div>
