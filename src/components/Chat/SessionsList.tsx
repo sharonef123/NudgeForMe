@@ -44,10 +44,13 @@ const SessionsList = ({ isDarkMode = true }: SessionsListProps) => {
           </div>
         ) : (
           sessions.map((s) => (
-            <button
+            <div
               key={s.id}
+              role="button"
+              tabIndex={0}
               onClick={() => setActiveSession(s.id)}
-              className={`w-full text-right p-3 rounded-xl border transition-all group ${
+              onKeyDown={(e) => e.key === "Enter" && setActiveSession(s.id)}
+              className={`w-full text-right p-3 rounded-xl border transition-all group cursor-pointer ${
                 s.id === activeSessionId
                   ? isDarkMode
                     ? "bg-emerald-500/20 border-emerald-500/30"
@@ -79,11 +82,12 @@ const SessionsList = ({ isDarkMode = true }: SessionsListProps) => {
                 <button
                   onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-500 hover:text-red-400 transition-all flex-shrink-0"
+                  aria-label="מחק שיחה"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-            </button>
+            </div>
           ))
         )}
       </div>
