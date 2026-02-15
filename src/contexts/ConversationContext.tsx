@@ -1,157 +1,158 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
-  timestamp: Date;
-  module?: string;
-  tier?: 0 | 1 | 2 | 3;
+  timestamp: string;
 }
 
-export interface Conversation {
+export interface Session {
   id: string;
   title: string;
   messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-  module?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface ConversationContextType {
-  conversations: Conversation[];
-  activeConversationId: string | null;
-  activeConversation: Conversation | null;
-  createConversation: (title: string, module?: string) => string;
-  addMessage: (conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => void;
-  deleteConversation: (conversationId: string) => void;
-  setActiveConversation: (conversationId: string) => void;
-  clearAll: () => void;
+  sessions: Session[];
+  activeSessionId: string | null;
+  activeSession: Session | null;
+  createSession: () => Session;
+  deleteSession: (id: string) => void;
+  setActiveSession: (id: string) => void;
+  addMessage: (msg: Omit<Message, "id" | "timestamp">) => void;
+  clearMessages: () => void;
 }
 
-const ConversationContext = createContext<ConversationContextType | undefined>(undefined);
+const ConversationContext = createContext<ConversationContextType | null>(null);
 
-const STORAGE_KEY = 'nudge_conversations';
-const MAX_CONVERSATIONS = 50;
+const STORAGE_KEY = "nudge_sessions_v2";
+
+const loadSessions = (): Session[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+};
+
+const saveSessions = (sessions: Session[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch {}
+};
 
 export const ConversationProvider = ({ children }: { children: ReactNode }) => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        const withDates = parsed.map((conv: any) => ({
-          ...conv,
-          createdAt: new Date(conv.createdAt),
-          updatedAt: new Date(conv.updatedAt),
-          messages: conv.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-        }));
-        setConversations(withDates);
-      }
-    } catch (error) {
-      console.error('Error loading conversations:', error);
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    const loaded = loadSessions();
+    if (loaded.length === 0) {
+      const first: Session = {
+        id: "session_" + Date.now(),
+        title: "שיחה ראשונה",
+        messages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveSessions([first]);
+      return [first];
     }
+    return loaded;
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    const loaded = loadSessions();
+    return loaded.length > 0 ? loaded[0].id : null;
+  });
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId) || null;
+
+  const createSession = useCallback((): Session => {
+    const newSession: Session = {
+      id: "session_" + Date.now(),
+      title: "שיחה חדשה",
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setSessions((prev) => {
+      const updated = [newSession, ...prev];
+      saveSessions(updated);
+      return updated;
+    });
+    setActiveSessionId(newSession.id);
+    return newSession;
   }, []);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-    } catch (error) {
-      console.error('Error saving conversations:', error);
-    }
-  }, [conversations]);
+  const deleteSession = useCallback((id: string) => {
+    setSessions((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveSessions(updated);
+      return updated;
+    });
+    setActiveSessionId((prev) => {
+      if (prev === id) {
+        const remaining = sessions.filter((s) => s.id !== id);
+        return remaining.length > 0 ? remaining[0].id : null;
+      }
+      return prev;
+    });
+  }, [sessions]);
 
-  const createConversation = (title: string, module?: string): string => {
-    const newConv: Conversation = {
-      id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      title,
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      module
+  const addMessage = useCallback((msg: Omit<Message, "id" | "timestamp">) => {
+    const newMsg: Message = {
+      ...msg,
+      id: Date.now().toString() + Math.random().toString(36).slice(2),
+      timestamp: new Date().toISOString(),
     };
 
-    setConversations(prev => {
-      const limited = prev.length >= MAX_CONVERSATIONS ? prev.slice(1) : prev;
-      return [...limited, newConv];
+    setSessions((prev) => {
+      const updated = prev.map((s) => {
+        if (s.id !== activeSessionId) return s;
+        const newMessages = [...s.messages, newMsg];
+        const title = s.messages.length === 0 && msg.role === "user"
+          ? msg.content.slice(0, 40) + (msg.content.length > 40 ? "..." : "")
+          : s.title;
+        return {
+          ...s,
+          messages: newMessages,
+          title,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      saveSessions(updated);
+      return updated;
     });
+  }, [activeSessionId]);
 
-    setActiveConversationId(newConv.id);
-    console.log('רשמתי לעצמי: שיחה חדשה -', title);
-    return newConv.id;
-  };
-
-  const addMessage = (conversationId: string, message: Omit<Message, 'id' | 'timestamp'>) => {
-    setConversations(prev => prev.map(conv => {
-      if (conv.id !== conversationId) return conv;
-
-      const newMessage: Message = {
-        ...message,
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: new Date()
-      };
-
-      return {
-        ...conv,
-        messages: [...conv.messages, newMessage],
-        updatedAt: new Date()
-      };
-    }));
-
-    if (message.tier && message.tier >= 2) {
-      console.log('רשמתי לעצמי (חשוב!):', message.content.substring(0, 50));
-    }
-  };
-
-  const deleteConversation = (conversationId: string) => {
-    setConversations(prev => prev.filter(conv => conv.id !== conversationId));
-    if (activeConversationId === conversationId) {
-      setActiveConversationId(null);
-    }
-  };
-
-  const setActiveConversation = (conversationId: string) => {
-    setActiveConversationId(conversationId);
-  };
-
-  const clearAll = () => {
-    if (window.confirm('למחוק את כל השיחות?')) {
-      setConversations([]);
-      setActiveConversationId(null);
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  };
-
-  const activeConversation = conversations.find(c => c.id === activeConversationId) || null;
+  const clearMessages = useCallback(() => {
+    setSessions((prev) => {
+      const updated = prev.map((s) =>
+        s.id === activeSessionId ? { ...s, messages: [], updatedAt: new Date().toISOString() } : s
+      );
+      saveSessions(updated);
+      return updated;
+    });
+  }, [activeSessionId]);
 
   return (
-    <ConversationContext.Provider
-      value={{
-        conversations,
-        activeConversationId,
-        activeConversation,
-        createConversation,
-        addMessage,
-        deleteConversation,
-        setActiveConversation,
-        clearAll
-      }}
-    >
+    <ConversationContext.Provider value={{
+      sessions,
+      activeSessionId,
+      activeSession,
+      createSession,
+      deleteSession,
+      setActiveSession: setActiveSessionId,
+      addMessage,
+      clearMessages,
+    }}>
       {children}
     </ConversationContext.Provider>
   );
 };
 
 export const useConversation = () => {
-  const context = useContext(ConversationContext);
-  if (!context) {
-    throw new Error('useConversation must be used within ConversationProvider');
-  }
-  return context;
+  const ctx = useContext(ConversationContext);
+  if (!ctx) throw new Error("useConversation must be inside ConversationProvider");
+  return ctx;
 };
