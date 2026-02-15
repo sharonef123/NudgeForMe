@@ -24,14 +24,11 @@ const GoogleToolsPanel = ({ isDarkMode = true, onClose }: GoogleToolsPanelProps)
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    initGoogleAuth().then(async () => {
-      const signedIn = isSignedIn();
+    const signedIn = isSignedIn();
       setConnected(signedIn);
       if (signedIn) {
-        const u = await fetchGoogleUser();
-        setUser(u);
+        fetchGoogleUser().then(setUser);
       }
-    });
   }, []);
 
   const handleSignIn = async () => {
